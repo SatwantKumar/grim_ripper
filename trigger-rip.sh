@@ -60,80 +60,53 @@ echo "$(date): Environment debug - USER: $USER" >> "$LOG_FILE"
 echo "$(date): Environment debug - HOME: $HOME" >> "$LOG_FILE"
 echo "$(date): Environment debug - DEVICE_NODE: $DEVICE_NODE" >> "$LOG_FILE"
 
-# Critical: Wait for device to be ready (disc might still be spinning up)
-echo "$(date): Waiting for device to stabilize..." >> "$LOG_FILE"
-sleep 3
+# Critical: Wait for disc to be actually readable (not just device present)
+echo "$(date): Waiting for disc media to become ready..." >> "$LOG_FILE"
 
-# Check if device is actually accessible
-if [ ! -r "$DEVICE_NODE" ]; then
-    echo "$(date): Device $DEVICE_NODE is not readable by current user/context" >> "$LOG_FILE"
-    ls -la "$DEVICE_NODE" >> "$LOG_FILE" 2>&1
+# Smart waiting: try multiple times with increasing delays
+MAX_ATTEMPTS=6
+ATTEMPT=1
+MEDIA_READY=false
+
+while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$MEDIA_READY" = false ]; do
+    echo "$(date): Attempt $ATTEMPT/$MAX_ATTEMPTS - checking if media is ready..." >> "$LOG_FILE"
+    
+    # Try a quick cdparanoia test to see if media is readable
+    if timeout 5 cdparanoia -Q -d "$DEVICE_NODE" >/dev/null 2>&1; then
+        echo "$(date): Media is ready! (detected on attempt $ATTEMPT)" >> "$LOG_FILE"
+        MEDIA_READY=true
+        break
+    fi
+    
+    # Progressive delays: 2, 4, 6, 8, 10, 12 seconds
+    DELAY=$((ATTEMPT * 2))
+    echo "$(date): Media not ready yet, waiting ${DELAY}s before retry..." >> "$LOG_FILE"
+    sleep $DELAY
+    ATTEMPT=$((ATTEMPT + 1))
+done
+
+if [ "$MEDIA_READY" = false ]; then
+    echo "$(date): Media never became ready after $MAX_ATTEMPTS attempts, aborting" >> "$LOG_FILE"
+    exit 1
 fi
+
+# Fix PATH for missing commands
+export PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
     
-    # Method 1: Try cdparanoia first (works for audio CDs and we know it works!)
-    if command -v cdparanoia >/dev/null; then
-        echo "$(date): Trying cdparanoia..." >> "$LOG_FILE"
-        CDPARANOIA_OUTPUT=$(timeout 15 cdparanoia -Q -d "$DEVICE_NODE" 2>&1)
-        CDPARANOIA_EXIT=$?
-        if [ $CDPARANOIA_EXIT -eq 0 ]; then
-            echo "$(date): Audio CD detected via cdparanoia (as root)" >> "$LOG_FILE"
-            DISC_DETECTED=true
-        else
-            echo "$(date): cdparanoia failed (exit $CDPARANOIA_EXIT): $CDPARANOIA_OUTPUT" >> "$LOG_FILE"
-        fi
-    fi
-    
-    # Method 2: Try cd-discid (also works for audio CDs)
-    if [ "$DISC_DETECTED" = false ] && command -v cd-discid >/dev/null; then
-        echo "$(date): Trying cd-discid..." >> "$LOG_FILE"
-        CDDISCID_OUTPUT=$(timeout 15 cd-discid "$DEVICE_NODE" 2>&1)
-        CDDISCID_EXIT=$?
-        if [ $CDDISCID_EXIT -eq 0 ]; then
-            echo "$(date): Audio CD detected via cd-discid (as root)" >> "$LOG_FILE"
-            DISC_DETECTED=true
-        else
-            echo "$(date): cd-discid failed (exit $CDDISCID_EXIT): $CDDISCID_OUTPUT" >> "$LOG_FILE"
-        fi
-    fi
-    
-    # Method 3: Try blkid for data discs
-    if [ "$DISC_DETECTED" = false ]; then
-        echo "$(date): Trying blkid..." >> "$LOG_FILE"
-        BLKID_OUTPUT=$(timeout 10 blkid "$DEVICE_NODE" 2>&1)
-        BLKID_EXIT=$?
-        if [ $BLKID_EXIT -eq 0 ]; then
-            echo "$(date): Data disc detected via blkid" >> "$LOG_FILE"
-            DISC_DETECTED=true
-        else
-            echo "$(date): blkid failed (exit $BLKID_EXIT): $BLKID_OUTPUT" >> "$LOG_FILE"
-        fi
-    fi
-    
-    # Method 4: Try dd as fallback (even though it's failing in your case)
-    if [ "$DISC_DETECTED" = false ]; then
-        echo "$(date): Trying dd..." >> "$LOG_FILE"
-        DD_OUTPUT=$(timeout 10 dd if="$DEVICE_NODE" of=/dev/null bs=2048 count=1 2>&1)
-        DD_EXIT=$?
-        if [ $DD_EXIT -eq 0 ]; then
-            echo "$(date): Disc detected via dd read test" >> "$LOG_FILE"
-            DISC_DETECTED=true
-        else
-            echo "$(date): dd failed (exit $DD_EXIT): $DD_OUTPUT" >> "$LOG_FILE"
-        fi
-    fi
-    
-    # Method 5: Check if device is ready using blockdev
-    if [ "$DISC_DETECTED" = false ] && command -v blockdev >/dev/null; then
-        echo "$(date): Trying blockdev..." >> "$LOG_FILE"
-        BLOCKDEV_OUTPUT=$(blockdev --test-ro "$DEVICE_NODE" 2>&1)
-        BLOCKDEV_EXIT=$?
-        if [ $BLOCKDEV_EXIT -eq 0 ]; then
-            echo "$(date): Device is ready (via blockdev), proceeding" >> "$LOG_FILE"
-            DISC_DETECTED=true
-        else
-            echo "$(date): blockdev failed (exit $BLOCKDEV_EXIT): $BLOCKDEV_OUTPUT" >> "$LOG_FILE"
-        fi
-    fi
+# Media is confirmed ready, now determine disc type
+echo "$(date): Determining disc type..." >> "$LOG_FILE"
+
+# Since cdparanoia already confirmed it's readable, it's likely an audio CD
+if timeout 10 cdparanoia -Q -d "$DEVICE_NODE" >/dev/null 2>&1; then
+    echo "$(date): Confirmed audio CD via cdparanoia" >> "$LOG_FILE"
+    DISC_DETECTED=true
+elif timeout 10 /usr/sbin/blkid "$DEVICE_NODE" >/dev/null 2>&1; then
+    echo "$(date): Confirmed data disc via blkid" >> "$LOG_FILE"
+    DISC_DETECTED=true
+else
+    echo "$(date): Unknown disc type, but media is ready - proceeding anyway" >> "$LOG_FILE"
+    DISC_DETECTED=true
+fi
     
     if [ "$DISC_DETECTED" = true ]; then
         echo "$(date): Disc confirmed readable on $DEVICE_NODE, starting rip process" >> "$LOG_FILE"

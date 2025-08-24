@@ -1,5 +1,5 @@
 {
-    "output_dir": "/media/rsd/MUSIC",
+    "output_dir": "/mnt/MUSIC",
     "formats": ["flac", "mp3"],
     "eject_after_rip": true,
     "notification_enabled": false,

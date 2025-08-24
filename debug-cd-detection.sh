@@ -101,7 +101,7 @@ echo "4. Directory Structure:"
 echo "-----------------------"
 
 dirs=(
-    "/media/rsd/MUSIC"
+    "/mnt/MUSIC"
     "/var/log/auto-ripper"
     "/opt/auto-ripper"
 )

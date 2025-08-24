@@ -59,7 +59,7 @@ class AutoRipper:
     def load_config(self):
         """Load configuration from JSON file"""
         default_config = {
-            "output_dir": "/media/rsd/MUSIC",
+            "output_dir": "/mnt/MUSIC",
             "formats": ["flac", "mp3"],
             "eject_after_rip": True,
             "notification_enabled": False,

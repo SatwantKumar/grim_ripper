@@ -5,7 +5,7 @@ echo "🎵 Manual CD Rip Test"
 echo "====================="
 
 DEVICE="/dev/sr0"
-OUTPUT_DIR="/media/rsd/MUSIC"
+OUTPUT_DIR="/mnt/MUSIC"
 
 echo "1. Pre-flight checks:"
 echo "---------------------"
@@ -71,7 +71,7 @@ TEMP_LOG="/tmp/test-rip.log"
 
 cat > "$TEMP_CONFIG" << EOF
 CDROM=/dev/sr0
-OUTPUTDIR=/media/rsd/MUSIC
+OUTPUTDIR=/mnt/MUSIC
 OUTPUTTYPE="flac"
 FLACENCODERSYNTAX=flac
 FLACOPTS='--verify --best'
@@ -141,7 +141,7 @@ if timeout 300 abcde -c "$TEMP_CONFIG" -1 2>&1; then
     
     # Check for output files
     echo "Checking for output files:"
-    find /media/rsd/MUSIC/Test_Album/ -name "*.flac" 2>/dev/null | head -5
+    find /mnt/MUSIC/Test_Album/ -name "*.flac" 2>/dev/null | head -5
     
 else
     echo "❌ Test rip failed"
@@ -154,7 +154,7 @@ echo
 echo "4. Check for existing rip files:"
 echo "--------------------------------"
 echo "Recent files in output directory:"
-find /media/rsd/MUSIC/ -type f -newer /tmp -ls 2>/dev/null | head -10
+find /mnt/MUSIC/ -type f -newer /tmp -ls 2>/dev/null | head -10
 
 echo
 echo "🎵 Manual test complete!"

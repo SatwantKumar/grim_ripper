@@ -26,6 +26,8 @@ sudo cp test-disc-detection-contexts.sh /opt/auto-ripper/
 sudo cp debug-dd-issue.sh /opt/auto-ripper/
 sudo cp verify-deployment.sh /opt/auto-ripper/
 sudo cp diagnose-stuck-rip.sh /opt/auto-ripper/
+sudo cp check-duplicate-files.sh /opt/auto-ripper/
+sudo cp check-mount-permissions.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 sudo cp abcde-offline.conf /opt/auto-ripper/
 
@@ -48,6 +50,8 @@ sudo chmod +x /opt/auto-ripper/test-disc-detection-contexts.sh
 sudo chmod +x /opt/auto-ripper/debug-dd-issue.sh
 sudo chmod +x /opt/auto-ripper/verify-deployment.sh
 sudo chmod +x /opt/auto-ripper/diagnose-stuck-rip.sh
+sudo chmod +x /opt/auto-ripper/check-duplicate-files.sh
+sudo chmod +x /opt/auto-ripper/check-mount-permissions.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf
@@ -89,7 +93,7 @@ import json
 import os
 
 config = {
-    'output_dir': '/media/rsd/MUSIC',
+    'output_dir': '/mnt/MUSIC',
     'formats': ['flac', 'mp3'],
     'eject_after_rip': True,
     'notification_enabled': False,
@@ -121,7 +125,7 @@ echo "3. Manual script mode: /opt/auto-ripper/auto-ripper.py"
 echo ""
 echo "Configuration file: /opt/auto-ripper/config.json"
 echo "Log files: /var/log/auto-ripper/"
-echo "Output directory: /media/rsd/MUSIC/"
+echo "Output directory: /mnt/MUSIC/"
 echo ""
 echo "To test: Insert a CD and check /var/log/auto-ripper/auto-ripper.log"
 echo ""

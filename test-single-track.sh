@@ -5,7 +5,7 @@ echo "🎵 Single Track Test"
 echo "==================="
 
 DEVICE="/dev/sr0"
-OUTPUT_DIR="/media/rsd/MUSIC"
+OUTPUT_DIR="/mnt/MUSIC"
 
 # Basic checks
 if [ ! -e "$DEVICE" ]; then
@@ -24,7 +24,7 @@ echo "✅ Audio CD detected"
 SIMPLE_CONFIG="/tmp/simple-abcde.conf"
 cat > "$SIMPLE_CONFIG" << 'EOF'
 CDROM=/dev/sr0
-OUTPUTDIR=/media/rsd/MUSIC
+OUTPUTDIR=/mnt/MUSIC
 OUTPUTTYPE="flac"
 FLACENCODERSYNTAX=flac
 FLACOPTS='--verify --best'
@@ -50,12 +50,12 @@ if abcde -c "$SIMPLE_CONFIG" -1 -o flac; then
     
     # Check for output
     echo "Checking for output files:"
-    find /media/rsd/MUSIC/SingleTrackTest/ -name "*.flac" 2>/dev/null || echo "No files found"
+    find /mnt/MUSIC/SingleTrackTest/ -name "*.flac" 2>/dev/null || echo "No files found"
     
     # Show file details
-    if [ -d "/media/rsd/MUSIC/SingleTrackTest/" ]; then
+    if [ -d "/mnt/MUSIC/SingleTrackTest/" ]; then
         echo "Files created:"
-        ls -la /media/rsd/MUSIC/SingleTrackTest/
+        ls -la /mnt/MUSIC/SingleTrackTest/
     fi
 else
     echo "❌ Single track rip failed"

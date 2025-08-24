@@ -38,7 +38,7 @@ sudo -u rsd pip3 install musicbrainzngs eyed3
 echo "📁 Creating directories..."
 sudo mkdir -p /opt/auto-ripper
 sudo mkdir -p /var/log/auto-ripper
-sudo mkdir -p /media/rsd/MUSIC
+sudo mkdir -p /mnt/MUSIC
 
 # Set permissions
 sudo chown -R rsd:rsd /opt/auto-ripper
@@ -49,7 +49,7 @@ sudo touch /var/log/auto-ripper/auto-ripper.log
 sudo touch /var/log/auto-ripper/trigger.log
 sudo chown rsd:rsd /var/log/auto-ripper/*.log
 sudo chmod 644 /var/log/auto-ripper/*.log
-sudo chown -R rsd:rsd /media/rsd
+sudo chown -R rsd:rsd /mnt/MUSIC
 
 echo "✅ Installation complete!"
 echo "Next steps:"

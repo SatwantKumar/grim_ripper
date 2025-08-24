@@ -38,14 +38,14 @@ fi
 echo
 echo "3. Recent Output Files:"
 echo "----------------------"
-if [ -d "/media/rsd/MUSIC" ]; then
+if [ -d "/mnt/MUSIC" ]; then
     echo "Recent files in output directory:"
-    find /media/rsd/MUSIC -type f -name "*.flac" -o -name "*.mp3" | head -5 | sed 's/^/   /' || echo "   No audio files found"
+    find /mnt/MUSIC -type f -name "*.flac" -o -name "*.mp3" | head -5 | sed 's/^/   /' || echo "   No audio files found"
     
     echo "Directory sizes:"
-    du -sh /media/rsd/MUSIC/* 2>/dev/null | sed 's/^/   /' || echo "   No directories found"
+    du -sh /mnt/MUSIC/* 2>/dev/null | sed 's/^/   /' || echo "   No directories found"
 else
-    echo "❌ Output directory /media/rsd/MUSIC not found"
+    echo "❌ Output directory /mnt/MUSIC not found"
 fi
 
 echo

@@ -98,29 +98,9 @@ class AutoRipper:
                 logging.error(f"Device {self.device} does not exist")
                 return False
             
-            # Since we might be running from root context, start with simple tests
+            # Prioritize methods that actually work based on testing
             
-            # Method 1: Try dd first (works regardless of user context)
-            try:
-                result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
-                                      capture_output=True, text=True, timeout=10)
-                if result.returncode == 0:
-                    logging.info(f"Disc confirmed present in {self.device} via dd")
-                    return True
-            except subprocess.TimeoutExpired:
-                pass
-            
-            # Method 2: Try blkid for data discs (works as any user)
-            try:
-                result = subprocess.run(['blkid', self.device], 
-                                      capture_output=True, text=True, timeout=10)
-                if result.returncode == 0:
-                    logging.info(f"Data disc detected in {self.device} via blkid")
-                    return True
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                pass
-            
-            # Method 3: Try cdparanoia for audio CDs
+            # Method 1: Try cdparanoia first (confirmed working for audio CDs)
             try:
                 result = subprocess.run(['cdparanoia', '-Q', '-d', self.device], 
                                       capture_output=True, text=True, timeout=15)
@@ -130,7 +110,7 @@ class AutoRipper:
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 pass
             
-            # Method 4: Try cd-discid for audio CDs
+            # Method 2: Try cd-discid (also confirmed working for audio CDs)
             try:
                 result = subprocess.run(['cd-discid', self.device], 
                                       capture_output=True, text=True, timeout=15)
@@ -138,6 +118,26 @@ class AutoRipper:
                     logging.info(f"Audio CD detected in {self.device} via cd-discid")
                     return True
             except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+            
+            # Method 3: Try blkid for data discs
+            try:
+                result = subprocess.run(['blkid', self.device], 
+                                      capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    logging.info(f"Data disc detected in {self.device} via blkid")
+                    return True
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+            
+            # Method 4: Try dd as fallback (may fail due to timing/hardware issues)
+            try:
+                result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
+                                      capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    logging.info(f"Disc confirmed present in {self.device} via dd")
+                    return True
+            except subprocess.TimeoutExpired:
                 pass
             
             # Method 5: Check device readiness with blockdev

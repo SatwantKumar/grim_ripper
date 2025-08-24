@@ -51,41 +51,44 @@ sleep 5
 if [ -e "$DEVICE_NODE" ]; then
     echo "$(date): Device $DEVICE_NODE exists, testing for media..." >> "$LOG_FILE"
     
-    # Try multiple methods to detect disc (udev runs as root, so we have full access)
+    # Try multiple methods to detect disc (prioritize methods that work!)
     DISC_DETECTED=false
     
     echo "$(date): Testing disc detection methods..." >> "$LOG_FILE"
     
-    # Method 1: Simple read test using dd (should work for any disc type)
-    if timeout 10 dd if="$DEVICE_NODE" of=/dev/null bs=2048 count=1 >/dev/null 2>&1; then
-        echo "$(date): Disc detected via dd read test" >> "$LOG_FILE"
-        DISC_DETECTED=true
-    fi
-    
-    # Method 2: If dd worked, try to determine disc type using sudo -u rsd
-    if [ "$DISC_DETECTED" = true ]; then
-        # Test as user rsd to see if it's an audio CD
-        if sudo -u rsd timeout 10 cdparanoia -Q -d "$DEVICE_NODE" >/dev/null 2>&1; then
-            echo "$(date): Confirmed as audio CD via cdparanoia (user rsd)" >> "$LOG_FILE"
-        elif sudo -u rsd timeout 10 cd-discid "$DEVICE_NODE" >/dev/null 2>&1; then
-            echo "$(date): Confirmed as audio CD via cd-discid (user rsd)" >> "$LOG_FILE"
-        elif timeout 10 blkid "$DEVICE_NODE" >/dev/null 2>&1; then
-            echo "$(date): Confirmed as data disc via blkid" >> "$LOG_FILE"
-        else
-            echo "$(date): Disc detected but type unknown - proceeding anyway" >> "$LOG_FILE"
+    # Method 1: Try cdparanoia first (works for audio CDs and we know it works!)
+    if command -v cdparanoia >/dev/null; then
+        if timeout 15 cdparanoia -Q -d "$DEVICE_NODE" >/dev/null 2>&1; then
+            echo "$(date): Audio CD detected via cdparanoia (as root)" >> "$LOG_FILE"
+            DISC_DETECTED=true
         fi
     fi
     
-    # Method 3: If dd failed, try other methods
+    # Method 2: Try cd-discid (also works for audio CDs)
+    if [ "$DISC_DETECTED" = false ] && command -v cd-discid >/dev/null; then
+        if timeout 15 cd-discid "$DEVICE_NODE" >/dev/null 2>&1; then
+            echo "$(date): Audio CD detected via cd-discid (as root)" >> "$LOG_FILE"
+            DISC_DETECTED=true
+        fi
+    fi
+    
+    # Method 3: Try blkid for data discs
     if [ "$DISC_DETECTED" = false ]; then
-        # Try blkid for data discs (works as root)
         if timeout 10 blkid "$DEVICE_NODE" >/dev/null 2>&1; then
             echo "$(date): Data disc detected via blkid" >> "$LOG_FILE"
             DISC_DETECTED=true
         fi
     fi
     
-    # Method 4: Check if device is ready using blockdev
+    # Method 4: Try dd as fallback (even though it's failing in your case)
+    if [ "$DISC_DETECTED" = false ]; then
+        if timeout 10 dd if="$DEVICE_NODE" of=/dev/null bs=2048 count=1 >/dev/null 2>&1; then
+            echo "$(date): Disc detected via dd read test" >> "$LOG_FILE"
+            DISC_DETECTED=true
+        fi
+    fi
+    
+    # Method 5: Check if device is ready using blockdev
     if [ "$DISC_DETECTED" = false ] && command -v blockdev >/dev/null; then
         if blockdev --test-ro "$DEVICE_NODE" 2>/dev/null; then
             echo "$(date): Device is ready (via blockdev), proceeding" >> "$LOG_FILE"

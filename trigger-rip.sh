@@ -44,8 +44,9 @@ if [ -f "$LOCKFILE" ]; then
     fi
 fi
 
-# Write our PID to the lock file
+# Write our PID to the lock file and make it writable by user rsd
 echo $$ > "$LOCKFILE"
+chmod 666 "$LOCKFILE"  # Allow user rsd to clean up the lock
 echo "$(date): Lock acquired by PID $$" >> "$LOG_FILE"
 
 # Ensure lock is released on script exit

@@ -85,9 +85,22 @@ mkdir -p /opt/auto-ripper/utils
 mkdir -p /var/log/auto-ripper  
 mkdir -p /mnt/MUSIC
 
+# Detect the actual user
+if [ -n "$SUDO_USER" ]; then
+    ACTUAL_USER="$SUDO_USER"
+elif id -u rsd >/dev/null 2>&1; then
+    ACTUAL_USER="rsd" 
+elif id -u pi >/dev/null 2>&1; then
+    ACTUAL_USER="pi"
+else
+    ACTUAL_USER=$(getent passwd 1000 | cut -d: -f1)
+fi
+
+echo "Setting permissions for user: $ACTUAL_USER"
+
 # Set permissions
-chown -R pi:pi /var/log/auto-ripper
-chown -R pi:pi /mnt/MUSIC
+chown -R "$ACTUAL_USER:$ACTUAL_USER" /var/log/auto-ripper
+chown -R "$ACTUAL_USER:$ACTUAL_USER" /mnt/MUSIC
 chmod 755 /opt/auto-ripper
 chmod 755 /var/log/auto-ripper
 chmod 755 /mnt/MUSIC
@@ -105,5 +118,5 @@ echo "6. Run: sudo cp ~/grim_ripper/*.rules /opt/auto-ripper/"
 echo "7. Run: sudo cp -r ~/grim_ripper/utils/* /opt/auto-ripper/utils/"
 echo "8. Run: sudo chmod +x /opt/auto-ripper/*.py /opt/auto-ripper/*.sh /opt/auto-ripper/utils/*"
 echo "9. Run: sudo cp /opt/auto-ripper/99-auto-ripper.rules /etc/udev/rules.d/"
-echo "10. Run: sudo usermod -a -G cdrom pi"
+echo "10. Run: sudo usermod -a -G cdrom $ACTUAL_USER"
 echo "11. Reboot: sudo reboot"

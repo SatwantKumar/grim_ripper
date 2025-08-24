@@ -22,7 +22,13 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/opt/auto-ripper"
 LOG_DIR="/var/log/auto-ripper"
 OUTPUT_DIR="/mnt/MUSIC"
-SERVICE_USER="pi"  # Default user for Raspberry Pi
+# Detect the actual user (the one who called sudo)
+if [ -n "$SUDO_USER" ]; then
+    SERVICE_USER="$SUDO_USER"
+else
+    # Fallback to pi if SUDO_USER is not set
+    SERVICE_USER="pi"
+fi
 REPO_URL="https://github.com/SatwantKumar/grim_ripper.git"
 
 # Function to print colored output
@@ -82,6 +88,7 @@ detect_system() {
     fi
     
     print_success "OS: $OS $OS_VERSION"
+    print_success "Detected user: $SERVICE_USER"
 }
 
 # Check for existing installation

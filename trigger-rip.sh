@@ -147,14 +147,27 @@ fi
         # Export device for the Python script
         export CDROM_DEVICE="$DEVICE_NODE"
         
-        # Set up proper environment for the pi user session
-        # Run the auto-ripper in daemon mode as user pi with proper environment
-        sudo -u pi -i CDROM_DEVICE="$DEVICE_NODE" /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
+        # Detect the non-root user to run as
+        if [ -n "$SUDO_USER" ]; then
+            RUN_USER="$SUDO_USER"
+        elif id -u rsd >/dev/null 2>&1; then
+            RUN_USER="rsd"
+        elif id -u pi >/dev/null 2>&1; then
+            RUN_USER="pi"
+        else
+            RUN_USER=$(getent passwd 1000 | cut -d: -f1)
+        fi
+        
+        echo "$(date): Running auto-ripper as user: $RUN_USER" >> "$LOG_FILE"
+        
+        # Set up proper environment for the detected user session
+        # Run the auto-ripper in daemon mode with proper environment
+        sudo -u "$RUN_USER" -i CDROM_DEVICE="$DEVICE_NODE" /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
         
         echo "$(date): Rip process initiated for $DEVICE_NODE" >> "$LOG_FILE"
     else
         echo "$(date): Device $DEVICE_NODE present but no readable media detected" >> "$LOG_FILE"
-        echo "$(date): This may be a permissions issue. Try: sudo usermod -a -G cdrom pi" >> "$LOG_FILE"
+        echo "$(date): This may be a permissions issue. Try: sudo usermod -a -G cdrom $USER" >> "$LOG_FILE"
     fi
 else
     echo "$(date): Device $DEVICE_NODE not found, skipping" >> "$LOG_FILE"

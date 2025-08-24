@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 # Configuration
 INSTALL_DIR="/opt/auto-ripper"
 LOG_DIR="/var/log/auto-ripper"
-OUTPUT_DIR="/mnt/MUSIC"
+OUTPUT_DIR="/mnt/GRIMRIPPER"
 # Detect the actual user (the one who called sudo)
 if [ -n "$SUDO_USER" ]; then
     SERVICE_USER="$SUDO_USER"

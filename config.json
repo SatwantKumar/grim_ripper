@@ -1,5 +1,5 @@
 {
-    "output_dir": "/mnt/MUSIC",
+    "output_dir": "/mnt/GRIMRIPPER",
     "formats": ["flac", "mp3"],
     "eject_after_rip": true,
     "notification_enabled": false,

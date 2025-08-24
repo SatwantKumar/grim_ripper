@@ -1,0 +1,8 @@
+# udev rules for automatic CD/DVD ripping
+# Place this file in /etc/udev/rules.d/
+
+# Trigger on optical disc insertion
+SUBSYSTEM=="block", KERNEL=="sr[0-9]*", ENV{ID_CDROM}=="1", ACTION=="change", ENV{DISK_MEDIA_CHANGE}=="1", RUN+="/opt/auto-ripper/trigger-rip.sh"
+
+# Alternative rule for broader compatibility
+SUBSYSTEM=="block", KERNEL=="sr[0-9]*", ACTION=="change", ATTR{removable}=="1", RUN+="/opt/auto-ripper/trigger-rip.sh"

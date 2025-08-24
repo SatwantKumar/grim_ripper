@@ -1,0 +1,24 @@
+{
+    "output_dir": "/media/rsd",
+    "formats": ["flac", "mp3"],
+    "eject_after_rip": true,
+    "notification_enabled": false,
+    "network_copy": false,
+    "network_path": "",
+    "max_retries": 3,
+    "cd_quality": {
+        "flac_compression": 8,
+        "mp3_quality": "V0",
+        "normalize_audio": false
+    },
+    "dvd_quality": {
+        "preset": "High Profile",
+        "container": "mp4",
+        "main_feature_only": true
+    },
+    "naming": {
+        "cd_format": "${ARTISTFILE}/${ALBUMFILE}/${TRACKNUM} - ${TRACKFILE}",
+        "dvd_format": "${TITLE}_${DATE}",
+        "sanitize_filenames": true
+    }
+}

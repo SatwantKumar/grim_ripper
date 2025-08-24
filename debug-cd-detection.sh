@@ -15,26 +15,50 @@ echo "----------------------"
 
 # Check for optical drives
 echo "Optical drives detected:"
-for device in /dev/sr* /dev/cdrom*; do
-    if [ -e "$device" ]; then
-        echo "  ✅ $device exists"
+
+# Check /sys/block for optical drives
+echo "Checking /sys/block for optical devices:"
+for blockdev in /sys/block/sr*; do
+    if [ -d "$blockdev" ]; then
+        device_name=$(basename "$blockdev")
+        device_path="/dev/$device_name"
+        echo "  ✅ Found optical device: $device_path"
         
-        # Check if readable
-        if timeout 5 dd if="$device" of=/dev/null bs=2048 count=1 >/dev/null 2>&1; then
-            echo "     📀 Media detected and readable"
+        # Check if device node exists
+        if [ -e "$device_path" ]; then
+            echo "     ✅ Device node exists"
+            
+            # Check if readable
+            if timeout 5 dd if="$device_path" of=/dev/null bs=2048 count=1 >/dev/null 2>&1; then
+                echo "     📀 Media detected and readable"
+            else
+                echo "     ❌ No media or not readable"
+            fi
+            
+            # Get device info
+            if command -v udevadm >/dev/null; then
+                echo "     Device info:"
+                udevadm info --name="$device_path" | grep -E "(ID_CDROM|ID_BUS|DEVTYPE)" | sed 's/^/       /'
+            fi
         else
-            echo "     ❌ No media or not readable"
+            echo "     ❌ Device node does not exist"
         fi
-        
-        # Get device info
-        if command -v udevadm >/dev/null; then
-            echo "     Device info:"
-            udevadm info --name="$device" | grep -E "(ID_CDROM|ID_BUS|DEVTYPE)" | sed 's/^/       /'
-        fi
-    else
-        echo "  ❌ $device not found"
     fi
 done
+
+# Fallback check for traditional device files
+for device in /dev/sr* /dev/cdrom*; do
+    if [ -e "$device" ]; then
+        echo "  ✅ $device exists (traditional check)"
+    fi
+done
+
+# If no optical drives found, show USB devices
+if ! ls /sys/block/sr* >/dev/null 2>&1; then
+    echo "  ❌ No optical drives found in /sys/block/"
+    echo "  USB devices connected:"
+    lsusb | grep -i -E "(cd|dvd|optical|drive)" || echo "    No optical USB devices found"
+fi
 
 echo
 echo "2. Software Dependencies:"
@@ -78,7 +102,6 @@ echo "-----------------------"
 
 dirs=(
     "/media/rsd/MUSIC"
-    "/media/rsd/videos"
     "/var/log/auto-ripper"
     "/opt/auto-ripper"
 )

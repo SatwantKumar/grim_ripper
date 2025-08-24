@@ -38,7 +38,6 @@ echo "📁 Creating directories..."
 sudo mkdir -p /opt/auto-ripper
 sudo mkdir -p /var/log/auto-ripper
 sudo mkdir -p /media/rsd/MUSIC
-sudo mkdir -p /media/rsd/videos
 
 # Set permissions
 sudo chown -R rsd:rsd /opt/auto-ripper

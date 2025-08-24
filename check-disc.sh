@@ -11,6 +11,11 @@ fi
 
 DEVICE_PATH="/dev/$DEVICE"
 
+# Ensure device path is correct
+if [[ "$DEVICE_PATH" != /dev/* ]]; then
+    DEVICE_PATH="/dev/$DEVICE_PATH"
+fi
+
 # Wait a moment for the device to settle
 sleep 2
 

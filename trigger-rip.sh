@@ -12,8 +12,13 @@ if [ -z "$DEVICE_NODE" ]; then
     DEVICE_NODE="$DEVNAME"
 fi
 
+# If DEVICE_NODE doesn't start with /dev/, prepend it
+if [[ "$DEVICE_NODE" != /dev/* ]]; then
+    DEVICE_NODE="/dev/$DEVICE_NODE"
+fi
+
 # If still no device, try default
-if [ -z "$DEVICE_NODE" ]; then
+if [ -z "$DEVICE_NODE" ] || [ "$DEVICE_NODE" = "/dev/" ]; then
     DEVICE_NODE="/dev/sr0"
 fi
 

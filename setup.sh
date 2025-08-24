@@ -12,6 +12,7 @@ sudo cp auto-ripper.py /opt/auto-ripper/
 sudo cp trigger-rip.sh /opt/auto-ripper/
 sudo cp check-disc.sh /opt/auto-ripper/
 sudo cp debug-cd-detection.sh /opt/auto-ripper/
+sudo cp fix-optical-drive.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 
 # Make scripts executable
@@ -19,6 +20,7 @@ sudo chmod +x /opt/auto-ripper/auto-ripper.py
 sudo chmod +x /opt/auto-ripper/trigger-rip.sh
 sudo chmod +x /opt/auto-ripper/check-disc.sh
 sudo chmod +x /opt/auto-ripper/debug-cd-detection.sh
+sudo chmod +x /opt/auto-ripper/fix-optical-drive.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf
@@ -60,7 +62,7 @@ import json
 import os
 
 config = {
-    'output_dir': '/media/rsd',
+    'output_dir': '/media/rsd/MUSIC',
     'formats': ['flac', 'mp3'],
     'eject_after_rip': True,
     'notification_enabled': False,
@@ -88,6 +90,11 @@ echo "3. Manual script mode: /opt/auto-ripper/auto-ripper.py"
 echo ""
 echo "Configuration file: /opt/auto-ripper/config.json"
 echo "Log files: /var/log/auto-ripper/"
-echo "Output directory: /media/rsd/"
+echo "Output directory: /media/rsd/MUSIC/"
 echo ""
 echo "To test: Insert a CD and check /var/log/auto-ripper/auto-ripper.log"
+echo ""
+echo "Troubleshooting:"
+echo "- If optical drive not detected: sudo /opt/auto-ripper/fix-optical-drive.sh"
+echo "- Debug system: sudo /opt/auto-ripper/debug-cd-detection.sh"
+echo "- Watch logs: tail -f /var/log/auto-ripper/trigger.log"

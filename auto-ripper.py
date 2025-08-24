@@ -34,7 +34,7 @@ class AutoRipper:
     def load_config(self):
         """Load configuration from JSON file"""
         default_config = {
-            "output_dir": "/media/rsd",
+            "output_dir": "/media/rsd/MUSIC",
             "formats": ["flac", "mp3"],
             "eject_after_rip": True,
             "notification_enabled": False,
@@ -141,7 +141,7 @@ class AutoRipper:
         try:
             # Get DVD title
             disc_label = self.get_disc_label() or f"DVD_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            output_file = f"{self.config['output_dir']}/videos/{disc_label}.mp4"
+            output_file = f"{self.config['output_dir']}/{disc_label}.mp4"
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_file), exist_ok=True)

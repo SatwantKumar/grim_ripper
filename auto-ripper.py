@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-Raspberry Pi Auto CD/DVD Ripper
+Grim Ripper - Raspberry Pi Auto CD/DVD Ripper
 Handles automatic detection, ripping, and organization of optical media
+
+By Satwant Kumar (Satwant.Dagar@gmail.com)
+GitHub: https://github.com/SatwantKumar/grim_ripper
+
+Because every CD deserves a proper digital afterlife! 💿➡️💾
 """
 
 import subprocess
@@ -211,7 +216,7 @@ class AutoRipper:
             
             if internet_available:
                 logging.info("Internet available, using online metadata")
-                cmd = ['abcde', '-d', self.device]
+                cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde.conf']
             else:
                 logging.info("No internet connection, using offline mode")
                 cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']

@@ -1,0 +1,83 @@
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Local configuration overrides
+config.local.json
+*.local.*
+
+# Test outputs
+test-output/
+test-music/
+
+# Backup files
+*.backup
+*.bak
+
+# Lock files
+*.lock
+.auto-ripper.lock
+
+# Output directories (for development)
+output/
+ripped-music/
+temp-rip/
+
+# Personal configurations
+abcde-personal.conf
+personal-config.json
+
+# System files
+lost+found/
+
+# Documentation build files
+docs/_build/
+docs/.doctrees/
+
+# Distribution files
+dist/
+build/
+*.egg-info/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# pytest cache
+.pytest_cache/
+
+# Local development database
+*.db
+*.sqlite
+*.sqlite3

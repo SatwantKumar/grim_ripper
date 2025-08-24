@@ -147,14 +147,14 @@ fi
         # Export device for the Python script
         export CDROM_DEVICE="$DEVICE_NODE"
         
-        # Set up proper environment for the user rsd session
-        # Run the auto-ripper in daemon mode as user rsd with proper environment
-        sudo -u rsd -i CDROM_DEVICE="$DEVICE_NODE" /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
+        # Set up proper environment for the pi user session
+        # Run the auto-ripper in daemon mode as user pi with proper environment
+        sudo -u pi -i CDROM_DEVICE="$DEVICE_NODE" /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
         
         echo "$(date): Rip process initiated for $DEVICE_NODE" >> "$LOG_FILE"
     else
         echo "$(date): Device $DEVICE_NODE present but no readable media detected" >> "$LOG_FILE"
-        echo "$(date): This may be a permissions issue. Try: sudo usermod -a -G cdrom rsd" >> "$LOG_FILE"
+        echo "$(date): This may be a permissions issue. Try: sudo usermod -a -G cdrom pi" >> "$LOG_FILE"
     fi
 else
     echo "$(date): Device $DEVICE_NODE not found, skipping" >> "$LOG_FILE"

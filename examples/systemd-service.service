@@ -1,0 +1,39 @@
+[Unit]
+Description=Grim Ripper - Raspberry Pi Auto CD Ripper
+Documentation=https://github.com/SatwantKumar/grim_ripper
+After=multi-user.target network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/auto-ripper
+ExecStart=/usr/bin/python3 /opt/auto-ripper/auto-ripper.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Environment
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/sbin:/usr/sbin
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/home/pi
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/auto-ripper /var/log/auto-ripper /mnt/MUSIC /tmp
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target

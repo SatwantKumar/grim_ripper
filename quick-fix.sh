@@ -17,18 +17,36 @@ fi
 
 echo "Detected user: $ACTUAL_USER"
 
-# Fix the directories with correct user and avoid Plex conflict
+# Fix the directories with correct user (keeping /mnt/MUSIC for Plex)
 echo "Creating directories..."
 mkdir -p /opt/auto-ripper/utils
 mkdir -p /var/log/auto-ripper
-mkdir -p /mnt/GRIMRIPPER  # Using GRIMRIPPER instead of MUSIC to avoid Plex conflict
+# /mnt/MUSIC already exists for Plex - checking permissions
 
 echo "Setting correct permissions..."
 chown -R "$ACTUAL_USER:$ACTUAL_USER" /var/log/auto-ripper
-chown -R "$ACTUAL_USER:$ACTUAL_USER" /mnt/GRIMRIPPER
 chmod 755 /opt/auto-ripper
 chmod 755 /var/log/auto-ripper
-chmod 755 /mnt/GRIMRIPPER
+
+# Check if /mnt/MUSIC exists and is writable by the user
+if [ -d "/mnt/MUSIC" ]; then
+    echo "✅ /mnt/MUSIC exists (used by Plex)"
+    # Check if user can write to it
+    if sudo -u "$ACTUAL_USER" test -w "/mnt/MUSIC"; then
+        echo "✅ $ACTUAL_USER can write to /mnt/MUSIC"
+    else
+        echo "⚠️  Adding $ACTUAL_USER write permissions to /mnt/MUSIC"
+        # Add user to the same group that owns /mnt/MUSIC or give write permissions
+        MUSIC_GROUP=$(stat -c '%G' /mnt/MUSIC)
+        echo "Adding $ACTUAL_USER to group: $MUSIC_GROUP"
+        usermod -a -G "$MUSIC_GROUP" "$ACTUAL_USER"
+    fi
+else
+    echo "❌ /mnt/MUSIC not found - creating it"
+    mkdir -p /mnt/MUSIC
+    chown -R "$ACTUAL_USER:$ACTUAL_USER" /mnt/MUSIC
+    chmod 755 /mnt/MUSIC
+fi
 
 echo "✅ Directories created with correct permissions"
 
@@ -102,7 +120,7 @@ echo "🎉 Quick fix completed!"
 echo ""
 echo "Summary of changes:"
 echo "- Used correct user: $ACTUAL_USER"
-echo "- Created /mnt/GRIMRIPPER (avoids Plex conflict)"
+echo "- Ensured /mnt/MUSIC permissions work with Plex"
 echo "- Fixed all permissions"
 echo "- Added user to cdrom group"
 echo "- Installed udev rules"
@@ -114,4 +132,4 @@ echo "2. After reboot, insert a CD to test"
 echo "3. Monitor logs: tail -f /var/log/auto-ripper/auto-ripper.log"
 echo "4. Check status: sudo systemctl status auto-ripper"
 echo ""
-echo "Your ripped music will be saved to: /mnt/GRIMRIPPER/"
+echo "Your ripped music will be saved to: /mnt/MUSIC/ (same as Plex)"

@@ -22,6 +22,7 @@ sudo cp cleanup-locks.sh /opt/auto-ripper/
 sudo cp test-single-track.sh /opt/auto-ripper/
 sudo cp check-system-status.sh /opt/auto-ripper/
 sudo cp fix-log-permissions.sh /opt/auto-ripper/
+sudo cp test-disc-detection-contexts.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 sudo cp abcde-offline.conf /opt/auto-ripper/
 
@@ -40,6 +41,7 @@ sudo chmod +x /opt/auto-ripper/cleanup-locks.sh
 sudo chmod +x /opt/auto-ripper/test-single-track.sh
 sudo chmod +x /opt/auto-ripper/check-system-status.sh
 sudo chmod +x /opt/auto-ripper/fix-log-permissions.sh
+sudo chmod +x /opt/auto-ripper/test-disc-detection-contexts.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf
@@ -119,6 +121,7 @@ echo "- Check system status: /opt/auto-ripper/check-system-status.sh"
 echo "- Test permissions: /opt/auto-ripper/test-permissions.sh"
 echo "- Test single track: /opt/auto-ripper/test-single-track.sh"
 echo "- Test manual rip: /opt/auto-ripper/test-manual-rip.sh"
+echo "- Test disc detection contexts: sudo /opt/auto-ripper/test-disc-detection-contexts.sh"
 echo "- Clean up stuck processes: /opt/auto-ripper/cleanup-locks.sh"
 echo "- If log permission errors: sudo /opt/auto-ripper/fix-log-permissions.sh"
 echo "- If optical drive not detected: sudo /opt/auto-ripper/fix-optical-drive.sh"

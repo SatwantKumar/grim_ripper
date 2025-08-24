@@ -98,29 +98,19 @@ class AutoRipper:
                 logging.error(f"Device {self.device} does not exist")
                 return False
             
-            # Try multiple detection methods
+            # Since we might be running from root context, start with simple tests
             
-            # Method 1: Try cdparanoia for audio CDs
+            # Method 1: Try dd first (works regardless of user context)
             try:
-                result = subprocess.run(['cdparanoia', '-Q', '-d', self.device], 
-                                      capture_output=True, text=True, timeout=15)
+                result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
+                                      capture_output=True, text=True, timeout=10)
                 if result.returncode == 0:
-                    logging.info(f"Audio CD detected in {self.device} via cdparanoia")
+                    logging.info(f"Disc confirmed present in {self.device} via dd")
                     return True
-            except (subprocess.TimeoutExpired, FileNotFoundError):
+            except subprocess.TimeoutExpired:
                 pass
             
-            # Method 2: Try cd-discid for audio CDs
-            try:
-                result = subprocess.run(['cd-discid', self.device], 
-                                      capture_output=True, text=True, timeout=15)
-                if result.returncode == 0:
-                    logging.info(f"Audio CD detected in {self.device} via cd-discid")
-                    return True
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                pass
-            
-            # Method 3: Try blkid for data discs
+            # Method 2: Try blkid for data discs (works as any user)
             try:
                 result = subprocess.run(['blkid', self.device], 
                                       capture_output=True, text=True, timeout=10)
@@ -130,14 +120,34 @@ class AutoRipper:
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 pass
             
-            # Method 4: Last resort - try dd
+            # Method 3: Try cdparanoia for audio CDs
             try:
-                result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
-                                      capture_output=True, text=True, timeout=10)
+                result = subprocess.run(['cdparanoia', '-Q', '-d', self.device], 
+                                      capture_output=True, text=True, timeout=15)
                 if result.returncode == 0:
-                    logging.info(f"Disc confirmed present in {self.device} via dd")
+                    logging.info(f"Audio CD detected in {self.device} via cdparanoia")
                     return True
-            except subprocess.TimeoutExpired:
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+            
+            # Method 4: Try cd-discid for audio CDs
+            try:
+                result = subprocess.run(['cd-discid', self.device], 
+                                      capture_output=True, text=True, timeout=15)
+                if result.returncode == 0:
+                    logging.info(f"Audio CD detected in {self.device} via cd-discid")
+                    return True
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+            
+            # Method 5: Check device readiness with blockdev
+            try:
+                result = subprocess.run(['blockdev', '--test-ro', self.device], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    logging.info(f"Device {self.device} is ready (via blockdev)")
+                    return True
+            except (subprocess.TimeoutExpired, FileNotFoundError):
                 pass
             
             logging.info(f"No readable disc detected in {self.device}")

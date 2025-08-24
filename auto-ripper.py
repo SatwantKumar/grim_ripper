@@ -167,23 +167,48 @@ class AutoRipper:
                 logging.info("No internet connection, using offline mode")
                 cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
             
+            logging.info(f"Running command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+            
+            # Log the output for debugging
+            if result.stdout:
+                logging.info(f"abcde stdout: {result.stdout[:500]}...")
+            if result.stderr:
+                logging.warning(f"abcde stderr: {result.stderr[:500]}...")
             
             if result.returncode == 0:
                 logging.info("Audio CD ripped successfully")
+                # Check if files were actually created
+                output_files = []
+                try:
+                    import glob
+                    output_files = glob.glob(f"{self.config['output_dir']}/**/*.flac", recursive=True)
+                    output_files.extend(glob.glob(f"{self.config['output_dir']}/**/*.mp3", recursive=True))
+                    logging.info(f"Found {len(output_files)} output files")
+                    for f in output_files[-3:]:  # Log last 3 files
+                        logging.info(f"Created: {f}")
+                except Exception as e:
+                    logging.warning(f"Could not check output files: {e}")
                 return True
             else:
                 # Check if error is network-related and retry offline
                 if "name resolution" in result.stderr.lower() or "network" in result.stderr.lower():
                     logging.warning("Network error detected, retrying in offline mode")
                     cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
+                    logging.info(f"Retry command: {' '.join(cmd)}")
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+                    
+                    if result.stdout:
+                        logging.info(f"abcde retry stdout: {result.stdout[:500]}...")
+                    if result.stderr:
+                        logging.warning(f"abcde retry stderr: {result.stderr[:500]}...")
                     
                     if result.returncode == 0:
                         logging.info("Audio CD ripped successfully (offline mode)")
                         return True
                 
-                logging.error(f"Error ripping audio CD: {result.stderr}")
+                logging.error(f"Error ripping audio CD (return code: {result.returncode})")
+                logging.error(f"Full stderr: {result.stderr}")
                 return False
                 
         except subprocess.TimeoutExpired:

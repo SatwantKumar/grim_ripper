@@ -55,44 +55,83 @@ if [ -e "$DEVICE_NODE" ]; then
     DISC_DETECTED=false
     
     echo "$(date): Testing disc detection methods..." >> "$LOG_FILE"
+echo "$(date): Environment debug - PATH: $PATH" >> "$LOG_FILE"
+echo "$(date): Environment debug - USER: $USER" >> "$LOG_FILE"
+echo "$(date): Environment debug - HOME: $HOME" >> "$LOG_FILE"
+echo "$(date): Environment debug - DEVICE_NODE: $DEVICE_NODE" >> "$LOG_FILE"
+
+# Critical: Wait for device to be ready (disc might still be spinning up)
+echo "$(date): Waiting for device to stabilize..." >> "$LOG_FILE"
+sleep 3
+
+# Check if device is actually accessible
+if [ ! -r "$DEVICE_NODE" ]; then
+    echo "$(date): Device $DEVICE_NODE is not readable by current user/context" >> "$LOG_FILE"
+    ls -la "$DEVICE_NODE" >> "$LOG_FILE" 2>&1
+fi
     
     # Method 1: Try cdparanoia first (works for audio CDs and we know it works!)
     if command -v cdparanoia >/dev/null; then
-        if timeout 15 cdparanoia -Q -d "$DEVICE_NODE" >/dev/null 2>&1; then
+        echo "$(date): Trying cdparanoia..." >> "$LOG_FILE"
+        CDPARANOIA_OUTPUT=$(timeout 15 cdparanoia -Q -d "$DEVICE_NODE" 2>&1)
+        CDPARANOIA_EXIT=$?
+        if [ $CDPARANOIA_EXIT -eq 0 ]; then
             echo "$(date): Audio CD detected via cdparanoia (as root)" >> "$LOG_FILE"
             DISC_DETECTED=true
+        else
+            echo "$(date): cdparanoia failed (exit $CDPARANOIA_EXIT): $CDPARANOIA_OUTPUT" >> "$LOG_FILE"
         fi
     fi
     
     # Method 2: Try cd-discid (also works for audio CDs)
     if [ "$DISC_DETECTED" = false ] && command -v cd-discid >/dev/null; then
-        if timeout 15 cd-discid "$DEVICE_NODE" >/dev/null 2>&1; then
+        echo "$(date): Trying cd-discid..." >> "$LOG_FILE"
+        CDDISCID_OUTPUT=$(timeout 15 cd-discid "$DEVICE_NODE" 2>&1)
+        CDDISCID_EXIT=$?
+        if [ $CDDISCID_EXIT -eq 0 ]; then
             echo "$(date): Audio CD detected via cd-discid (as root)" >> "$LOG_FILE"
             DISC_DETECTED=true
+        else
+            echo "$(date): cd-discid failed (exit $CDDISCID_EXIT): $CDDISCID_OUTPUT" >> "$LOG_FILE"
         fi
     fi
     
     # Method 3: Try blkid for data discs
     if [ "$DISC_DETECTED" = false ]; then
-        if timeout 10 blkid "$DEVICE_NODE" >/dev/null 2>&1; then
+        echo "$(date): Trying blkid..." >> "$LOG_FILE"
+        BLKID_OUTPUT=$(timeout 10 blkid "$DEVICE_NODE" 2>&1)
+        BLKID_EXIT=$?
+        if [ $BLKID_EXIT -eq 0 ]; then
             echo "$(date): Data disc detected via blkid" >> "$LOG_FILE"
             DISC_DETECTED=true
+        else
+            echo "$(date): blkid failed (exit $BLKID_EXIT): $BLKID_OUTPUT" >> "$LOG_FILE"
         fi
     fi
     
     # Method 4: Try dd as fallback (even though it's failing in your case)
     if [ "$DISC_DETECTED" = false ]; then
-        if timeout 10 dd if="$DEVICE_NODE" of=/dev/null bs=2048 count=1 >/dev/null 2>&1; then
+        echo "$(date): Trying dd..." >> "$LOG_FILE"
+        DD_OUTPUT=$(timeout 10 dd if="$DEVICE_NODE" of=/dev/null bs=2048 count=1 2>&1)
+        DD_EXIT=$?
+        if [ $DD_EXIT -eq 0 ]; then
             echo "$(date): Disc detected via dd read test" >> "$LOG_FILE"
             DISC_DETECTED=true
+        else
+            echo "$(date): dd failed (exit $DD_EXIT): $DD_OUTPUT" >> "$LOG_FILE"
         fi
     fi
     
     # Method 5: Check if device is ready using blockdev
     if [ "$DISC_DETECTED" = false ] && command -v blockdev >/dev/null; then
-        if blockdev --test-ro "$DEVICE_NODE" 2>/dev/null; then
+        echo "$(date): Trying blockdev..." >> "$LOG_FILE"
+        BLOCKDEV_OUTPUT=$(blockdev --test-ro "$DEVICE_NODE" 2>&1)
+        BLOCKDEV_EXIT=$?
+        if [ $BLOCKDEV_EXIT -eq 0 ]; then
             echo "$(date): Device is ready (via blockdev), proceeding" >> "$LOG_FILE"
             DISC_DETECTED=true
+        else
+            echo "$(date): blockdev failed (exit $BLOCKDEV_EXIT): $BLOCKDEV_OUTPUT" >> "$LOG_FILE"
         fi
     fi
     

@@ -14,14 +14,33 @@ from pathlib import Path
 from datetime import datetime
 
 # Configure logging
+import os
+log_dir = "/var/log/auto-ripper"
+log_file = os.path.join(log_dir, "auto-ripper.log")
+
+# Try to create log directory if it doesn't exist
+try:
+    os.makedirs(log_dir, exist_ok=True)
+    # Try to write to system log first
+    test_file = open(log_file, 'a')
+    test_file.close()
+    use_system_log = True
+except (PermissionError, OSError):
+    # Fall back to user home directory
+    log_file = os.path.expanduser("~/.auto-ripper.log")
+    use_system_log = False
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/var/log/auto-ripper/auto-ripper.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler()
     ]
 )
+
+if not use_system_log:
+    logging.warning(f"Using fallback log location: {log_file}")
 
 class AutoRipper:
     def __init__(self):

@@ -83,8 +83,16 @@ CDPARANOIAOPTS="--never-skip=40"
 EJECTCD=n
 PADTRACKS=y
 OUTPUTFORMAT='Test_Album/\${TRACKNUM} - Track_\${TRACKNUM}'
+
+# Force only track 1 - multiple ways to ensure this
 TRACKSTOENCODE="1"
-# Skip CDDB entirely by removing cddb from ACTIONS
+FIRSTTRACK=1
+LASTTRACK=1
+
+# Skip CDDB entirely by removing cddb from ACTIONS and using offline mode
+CDDBMETHOD=none
+BATCHNORM=n
+LOWDISK=n
 MAXPROCS=1
 
 # Default metadata when no CDDB
@@ -126,9 +134,9 @@ else
     exit 1
 fi
 
-# Run the test
+# Run the test - force track 1 only with command line option
 echo "Starting rip process..."
-if timeout 300 abcde -c "$TEMP_CONFIG" 2>&1; then
+if timeout 300 abcde -c "$TEMP_CONFIG" -1 2>&1; then
     echo "✅ Test rip completed successfully"
     
     # Check for output files

@@ -128,7 +128,7 @@ install_dependencies() {
         "git"
         "udev"
         "rsync"
-        "flock"
+        "util-linux"
     )
     
     # Optional packages (install if available)

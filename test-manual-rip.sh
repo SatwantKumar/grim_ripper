@@ -67,7 +67,9 @@ echo "---------------------------------------"
 
 # Create temporary config for testing (single track)
 TEMP_CONFIG="/tmp/test-abcde.conf"
-cat > "$TEMP_CONFIG" << 'EOF'
+TEMP_LOG="/tmp/test-rip.log"
+
+cat > "$TEMP_CONFIG" << EOF
 CDROM=/dev/sr0
 OUTPUTDIR=/media/rsd/MUSIC
 OUTPUTTYPE="flac"
@@ -80,20 +82,52 @@ CDPARANOIA=cdparanoia
 CDPARANOIAOPTS="--never-skip=40"
 EJECTCD=n
 PADTRACKS=y
-OUTPUTFORMAT='Test_Album/${TRACKNUM} - Track_${TRACKNUM}'
+OUTPUTFORMAT='Test_Album/\${TRACKNUM} - Track_\${TRACKNUM}'
 TRACKSTOENCODE="1"
 CDDBMETHOD=none
 MAXPROCS=1
+
+# Default metadata when no CDDB
+DARTIST="Test Artist"
+DALBUM="Test Album"
+DYEAR=\$(date +%Y)
+DGENRE="Test"
+
+# Character translations for safe filenames
 mungefilename ()
 {
-    echo "$@" | sed -e 's/^\.*//' -e 's/[^A-Za-z0-9._-]/_/g' -e 's/__*/_/g' -e 's/_$//g' -e 's/^_//g'
+    echo "\$@" | sed -e 's/^\.*//' -e 's/[^A-Za-z0-9._-]/_/g' -e 's/__*/_/g' -e 's/_\$//g' -e 's/^_//g'
+}
+
+# Use temp log file instead of system log
+pre_read ()
+{
+    echo "\$(date): Starting test rip" >> $TEMP_LOG
+}
+
+post_encode ()
+{
+    echo "\$(date): Test rip completed" >> $TEMP_LOG
 }
 EOF
 
 echo "Running test rip (track 1 only)..."
 echo "Command: abcde -c $TEMP_CONFIG"
 
+# Check disc one more time before ripping
+echo "Final disc check before ripping:"
+if timeout 10 cd-discid /dev/sr0 >/dev/null 2>&1; then
+    echo "✅ Disc ID detected, proceeding with rip"
+elif timeout 10 cdparanoia -Q -d /dev/sr0 >/dev/null 2>&1; then
+    echo "✅ Audio CD detected via cdparanoia, proceeding with rip"
+else
+    echo "❌ No audio CD detected. Make sure an audio CD is inserted."
+    rm -f "$TEMP_CONFIG"
+    exit 1
+fi
+
 # Run the test
+echo "Starting rip process..."
 if timeout 300 abcde -c "$TEMP_CONFIG" 2>&1; then
     echo "✅ Test rip completed successfully"
     
@@ -106,7 +140,7 @@ else
 fi
 
 # Cleanup
-rm -f "$TEMP_CONFIG"
+rm -f "$TEMP_CONFIG" "$TEMP_LOG"
 
 echo
 echo "4. Check for existing rip files:"

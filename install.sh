@@ -43,6 +43,7 @@ sudo mkdir -p /media/rsd/MUSIC
 # Set permissions
 sudo chown -R rsd:rsd /opt/auto-ripper
 sudo chown -R rsd:rsd /var/log/auto-ripper
+sudo chmod -R 755 /var/log/auto-ripper
 sudo chown -R rsd:rsd /media/rsd
 
 echo "✅ Installation complete!"

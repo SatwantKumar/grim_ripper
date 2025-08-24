@@ -24,26 +24,26 @@ sudo apt-get install -y \
     cd-discid \
     normalize-audio \
     vorbisgain \
-    mkcue \
+    # mkcue (manually installed) \
     python3 \
     python3-pip \
     udev
 
 # Install additional Python dependencies
 echo "🐍 Installing Python dependencies..."
-pip3 install musicbrainzngs
+sudo -u rsd pip3 install musicbrainzngs
 
 # Create directories
 echo "📁 Creating directories..."
 sudo mkdir -p /opt/auto-ripper
 sudo mkdir -p /var/log/auto-ripper
-sudo mkdir -p /media/rsd/music
+sudo mkdir -p /media/rsd/MUSIC
 sudo mkdir -p /media/rsd/videos
 
 # Set permissions
-sudo chown -R pi:pi /opt/auto-ripper
-sudo chown -R pi:pi /var/log/auto-ripper
-sudo chown -R pi:pi /media/rsd
+sudo chown -R rsd:rsd /opt/auto-ripper
+sudo chown -R rsd:rsd /var/log/auto-ripper
+sudo chown -R rsd:rsd /media/rsd
 
 echo "✅ Installation complete!"
 echo "Next steps:"

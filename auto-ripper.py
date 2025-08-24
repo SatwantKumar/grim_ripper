@@ -25,9 +25,11 @@ logging.basicConfig(
 
 class AutoRipper:
     def __init__(self):
-        self.device = '/dev/sr0'
+        # Check for device from environment (set by udev trigger)
+        self.device = os.environ.get('CDROM_DEVICE', '/dev/sr0')
         self.config_file = '/opt/auto-ripper/config.json'
         self.load_config()
+        logging.info(f"AutoRipper initialized with device: {self.device}")
         
     def load_config(self):
         """Load configuration from JSON file"""
@@ -63,14 +65,29 @@ class AutoRipper:
     
     def is_disc_present(self):
         """Check if a disc is present in the drive"""
+        logging.info(f"Checking for disc in {self.device}")
+        
         try:
-            # Try to get disc info
-            result = subprocess.run(['blkid', self.device], 
-                                  capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
+            # First check if device exists
+            if not os.path.exists(self.device):
+                logging.error(f"Device {self.device} does not exist")
+                return False
+            
+            # Try to read from the device to check for media
+            result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                logging.info(f"Disc confirmed present in {self.device}")
+                return True
+            else:
+                logging.info(f"No readable disc in {self.device}")
+                return False
+                
         except subprocess.TimeoutExpired:
+            logging.warning(f"Timeout while checking for disc in {self.device}")
             return False
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error checking for disc: {e}")
             return False
     
     def get_disc_type(self):

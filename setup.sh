@@ -10,15 +10,19 @@ echo "⚙️  Configuring Raspberry Pi Auto-Ripper..."
 echo "📄 Copying scripts..."
 sudo cp auto-ripper.py /opt/auto-ripper/
 sudo cp trigger-rip.sh /opt/auto-ripper/
-sudo cp abcde.conf /home/pi/.abcde.conf
+sudo cp check-disc.sh /opt/auto-ripper/
+sudo cp debug-cd-detection.sh /opt/auto-ripper/
+sudo cp abcde.conf /home/rsd/.abcde.conf
 
 # Make scripts executable
 sudo chmod +x /opt/auto-ripper/auto-ripper.py
 sudo chmod +x /opt/auto-ripper/trigger-rip.sh
+sudo chmod +x /opt/auto-ripper/check-disc.sh
+sudo chmod +x /opt/auto-ripper/debug-cd-detection.sh
 
 # Set ownership
-sudo chown pi:pi /home/pi/.abcde.conf
-sudo chown -R pi:pi /opt/auto-ripper/
+sudo chown rsd:rsd /home/rsd/.abcde.conf
+sudo chown -R rsd:rsd /opt/auto-ripper/
 
 # Install udev rules
 echo "🔧 Installing udev rules..."
@@ -35,7 +39,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-User=pi
+User=rsd
 WorkingDirectory=/opt/auto-ripper
 ExecStart=/usr/bin/python3 /opt/auto-ripper/auto-ripper.py
 Restart=always
@@ -51,7 +55,7 @@ sudo systemctl enable auto-ripper.service
 
 # Create configuration file
 echo "⚙️  Creating default configuration..."
-sudo -u pi python3 -c "
+sudo -u rsd python3 -c "
 import json
 import os
 
@@ -71,7 +75,7 @@ with open('/opt/auto-ripper/config.json', 'w') as f:
 "
 
 # Set permissions on config
-sudo chown pi:pi /opt/auto-ripper/config.json
+sudo chown rsd:rsd /opt/auto-ripper/config.json
 
 echo "✅ Setup complete!"
 echo ""

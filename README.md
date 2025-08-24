@@ -50,7 +50,7 @@ A complete automation solution for converting your CD and DVD collection to high
 ├── trigger-rip.sh      # udev trigger script
 └── config.json         # Configuration file
 
-/home/pi/
+/home/rsd/
 ├── .abcde.conf         # CD ripping configuration
 └── /media/rsd/         # Output directory
    ├── music/           # CD rips (FLAC/MP3)
@@ -190,7 +190,7 @@ sudo udevadm trigger
 
 ## Security Notes
 
-- Scripts run as user `pi` (not root)
+- Scripts run as user `rsd` (not root)
 - Network credentials stored in mount commands only
 - Log files readable by user only
 - No remote access by default

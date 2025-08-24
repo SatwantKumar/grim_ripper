@@ -19,10 +19,17 @@ fi
 echo "✅ Device $DEVICE exists"
 
 # Test CD access
+echo "Testing cdparanoia access..."
 if timeout 10 cdparanoia -Q -d "$DEVICE" >/dev/null 2>&1; then
-    echo "✅ CD is readable via cdparanoia"
+    echo "✅ CD is readable via cdparanoia (as user $(whoami))"
+elif timeout 10 sudo cdparanoia -Q -d "$DEVICE" >/dev/null 2>&1; then
+    echo "⚠️  CD is readable via cdparanoia (requires sudo)"
+    echo "This indicates a permissions issue. Run: sudo /opt/auto-ripper/fix-permissions.sh"
 else
-    echo "❌ CD not readable via cdparanoia"
+    echo "❌ CD not readable via cdparanoia (even with sudo)"
+    echo "Checking device permissions:"
+    ls -la "$DEVICE"
+    echo "Current user groups: $(groups)"
     exit 1
 fi
 

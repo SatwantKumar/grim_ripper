@@ -30,6 +30,7 @@ class AutoRipper:
         self.config_file = '/opt/auto-ripper/config.json'
         self.load_config()
         logging.info(f"AutoRipper initialized with device: {self.device}")
+        logging.info(f"Running as user: {os.getenv('USER', 'unknown')}, UID: {os.getuid()}")
         
     def load_config(self):
         """Load configuration from JSON file"""

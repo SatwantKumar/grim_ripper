@@ -42,7 +42,7 @@ fi
 echo $$ > "$LOCKFILE"
 
 # Log the trigger event
-echo "$(date): Disc insertion detected on $DEVICE_NODE (Action: $ACTION)" >> "$LOG_FILE"
+echo "$(date): Disc insertion detected on $DEVICE_NODE (Action: $ACTION, User: $(whoami), UID: $(id -u))" >> "$LOG_FILE"
 
 # Wait for the disc to settle
 sleep 5

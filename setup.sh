@@ -24,6 +24,7 @@ sudo cp check-system-status.sh /opt/auto-ripper/
 sudo cp fix-log-permissions.sh /opt/auto-ripper/
 sudo cp test-disc-detection-contexts.sh /opt/auto-ripper/
 sudo cp debug-dd-issue.sh /opt/auto-ripper/
+sudo cp verify-deployment.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 sudo cp abcde-offline.conf /opt/auto-ripper/
 
@@ -44,6 +45,7 @@ sudo chmod +x /opt/auto-ripper/check-system-status.sh
 sudo chmod +x /opt/auto-ripper/fix-log-permissions.sh
 sudo chmod +x /opt/auto-ripper/test-disc-detection-contexts.sh
 sudo chmod +x /opt/auto-ripper/debug-dd-issue.sh
+sudo chmod +x /opt/auto-ripper/verify-deployment.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf
@@ -102,6 +104,10 @@ with open('/opt/auto-ripper/config.json', 'w') as f:
 # Set permissions on config
 sudo chown rsd:rsd /opt/auto-ripper/config.json
 
+echo "🔄 Reloading udev rules..."
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 echo "✅ Setup complete!"
 echo ""
 echo "🎵 Your auto-ripper is now configured!"
@@ -118,6 +124,7 @@ echo ""
 echo "To test: Insert a CD and check /var/log/auto-ripper/auto-ripper.log"
 echo ""
 echo "Troubleshooting:"
+echo "- Verify deployment: /opt/auto-ripper/verify-deployment.sh"
 echo "- Test dependencies: /opt/auto-ripper/test-dependencies.sh"
 echo "- Check system status: /opt/auto-ripper/check-system-status.sh"
 echo "- Test permissions: /opt/auto-ripper/test-permissions.sh"

@@ -25,6 +25,7 @@ sudo cp fix-log-permissions.sh /opt/auto-ripper/
 sudo cp test-disc-detection-contexts.sh /opt/auto-ripper/
 sudo cp debug-dd-issue.sh /opt/auto-ripper/
 sudo cp verify-deployment.sh /opt/auto-ripper/
+sudo cp diagnose-stuck-rip.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 sudo cp abcde-offline.conf /opt/auto-ripper/
 
@@ -46,6 +47,7 @@ sudo chmod +x /opt/auto-ripper/fix-log-permissions.sh
 sudo chmod +x /opt/auto-ripper/test-disc-detection-contexts.sh
 sudo chmod +x /opt/auto-ripper/debug-dd-issue.sh
 sudo chmod +x /opt/auto-ripper/verify-deployment.sh
+sudo chmod +x /opt/auto-ripper/diagnose-stuck-rip.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf

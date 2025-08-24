@@ -24,6 +24,7 @@ sudo apt-get install -y \
     cd-discid \
     normalize-audio \
     vorbisgain \
+    eyed3 \
     # mkcue (manually installed) \
     python3 \
     python3-pip \
@@ -31,7 +32,7 @@ sudo apt-get install -y \
 
 # Install additional Python dependencies
 echo "🐍 Installing Python dependencies..."
-sudo -u rsd pip3 install musicbrainzngs
+sudo -u rsd pip3 install musicbrainzngs eyed3
 
 # Create directories
 echo "📁 Creating directories..."

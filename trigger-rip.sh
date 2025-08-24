@@ -25,9 +25,21 @@ fi
 # Check if another rip is already in progress
 LOCKFILE="/tmp/auto-ripper.lock"
 if [ -f "$LOCKFILE" ]; then
-    echo "$(date): Rip already in progress, ignoring trigger for $DEVICE_NODE" >> "$LOG_FILE"
-    exit 0
+    # Check if the process is actually running
+    if [ -r "$LOCKFILE" ]; then
+        PID=$(cat "$LOCKFILE" 2>/dev/null)
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            echo "$(date): Rip already in progress (PID: $PID), ignoring trigger for $DEVICE_NODE" >> "$LOG_FILE"
+            exit 0
+        else
+            echo "$(date): Stale lock file found, removing..." >> "$LOG_FILE"
+            rm -f "$LOCKFILE"
+        fi
+    fi
 fi
+
+# Create our own lock file
+echo $$ > "$LOCKFILE"
 
 # Log the trigger event
 echo "$(date): Disc insertion detected on $DEVICE_NODE (Action: $ACTION)" >> "$LOG_FILE"
@@ -91,3 +103,6 @@ if [ -e "$DEVICE_NODE" ]; then
 else
     echo "$(date): Device $DEVICE_NODE not found, skipping" >> "$LOG_FILE"
 fi
+
+# Clean up lock file when done
+rm -f "$LOCKFILE"

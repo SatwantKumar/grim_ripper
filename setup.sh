@@ -15,6 +15,7 @@ sudo cp debug-cd-detection.sh /opt/auto-ripper/
 sudo cp fix-optical-drive.sh /opt/auto-ripper/
 sudo cp test-disc-read.sh /opt/auto-ripper/
 sudo cp fix-permissions.sh /opt/auto-ripper/
+sudo cp test-dependencies.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
 sudo cp abcde-offline.conf /opt/auto-ripper/
 
@@ -26,6 +27,7 @@ sudo chmod +x /opt/auto-ripper/debug-cd-detection.sh
 sudo chmod +x /opt/auto-ripper/fix-optical-drive.sh
 sudo chmod +x /opt/auto-ripper/test-disc-read.sh
 sudo chmod +x /opt/auto-ripper/fix-permissions.sh
+sudo chmod +x /opt/auto-ripper/test-dependencies.sh
 
 # Set ownership
 sudo chown rsd:rsd /home/rsd/.abcde.conf
@@ -100,6 +102,7 @@ echo ""
 echo "To test: Insert a CD and check /var/log/auto-ripper/auto-ripper.log"
 echo ""
 echo "Troubleshooting:"
+echo "- Test dependencies: /opt/auto-ripper/test-dependencies.sh"
 echo "- If optical drive not detected: sudo /opt/auto-ripper/fix-optical-drive.sh"
 echo "- If permissions issues: sudo /opt/auto-ripper/fix-permissions.sh"
 echo "- Test disc reading: /opt/auto-ripper/test-disc-read.sh"

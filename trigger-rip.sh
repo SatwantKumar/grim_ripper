@@ -22,6 +22,13 @@ if [ -z "$DEVICE_NODE" ] || [ "$DEVICE_NODE" = "/dev/" ]; then
     DEVICE_NODE="/dev/sr0"
 fi
 
+# Check if another rip is already in progress
+LOCKFILE="/tmp/auto-ripper.lock"
+if [ -f "$LOCKFILE" ]; then
+    echo "$(date): Rip already in progress, ignoring trigger for $DEVICE_NODE" >> "$LOG_FILE"
+    exit 0
+fi
+
 # Log the trigger event
 echo "$(date): Disc insertion detected on $DEVICE_NODE (Action: $ACTION)" >> "$LOG_FILE"
 

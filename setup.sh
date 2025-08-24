@@ -16,6 +16,7 @@ sudo cp fix-optical-drive.sh /opt/auto-ripper/
 sudo cp test-disc-read.sh /opt/auto-ripper/
 sudo cp fix-permissions.sh /opt/auto-ripper/
 sudo cp abcde.conf /home/rsd/.abcde.conf
+sudo cp abcde-offline.conf /opt/auto-ripper/
 
 # Make scripts executable
 sudo chmod +x /opt/auto-ripper/auto-ripper.py

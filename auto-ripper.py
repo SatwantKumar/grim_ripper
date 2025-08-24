@@ -146,9 +146,26 @@ class AutoRipper:
         """Rip audio CD using abcde"""
         logging.info("Starting audio CD rip...")
         
+        # Check if another rip is already in progress
+        lockfile = "/tmp/auto-ripper.lock"
+        if os.path.exists(lockfile):
+            logging.warning("Another rip process is already running, skipping")
+            return False
+        
         try:
-            # Use abcde with our configuration
-            cmd = ['abcde', '-d', self.device]
+            # Create lock file
+            with open(lockfile, 'w') as f:
+                f.write(str(os.getpid()))
+            
+            # Test internet connectivity for metadata
+            internet_available = self.test_internet_connection()
+            
+            if internet_available:
+                logging.info("Internet available, using online metadata")
+                cmd = ['abcde', '-d', self.device]
+            else:
+                logging.info("No internet connection, using offline mode")
+                cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
             
@@ -156,6 +173,16 @@ class AutoRipper:
                 logging.info("Audio CD ripped successfully")
                 return True
             else:
+                # Check if error is network-related and retry offline
+                if "name resolution" in result.stderr.lower() or "network" in result.stderr.lower():
+                    logging.warning("Network error detected, retrying in offline mode")
+                    cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+                    
+                    if result.returncode == 0:
+                        logging.info("Audio CD ripped successfully (offline mode)")
+                        return True
+                
                 logging.error(f"Error ripping audio CD: {result.stderr}")
                 return False
                 
@@ -164,6 +191,19 @@ class AutoRipper:
             return False
         except Exception as e:
             logging.error(f"Unexpected error during audio CD rip: {e}")
+            return False
+        finally:
+            # Clean up lock file
+            if os.path.exists(lockfile):
+                os.remove(lockfile)
+    
+    def test_internet_connection(self):
+        """Test if internet connection is available"""
+        try:
+            import socket
+            socket.create_connection(("8.8.8.8", 53), timeout=5)
+            return True
+        except OSError:
             return False
     
     def rip_dvd(self):

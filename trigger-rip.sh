@@ -92,8 +92,8 @@ if [ -e "$DEVICE_NODE" ]; then
         # Export device for the Python script
         export CDROM_DEVICE="$DEVICE_NODE"
         
-        # Run the auto-ripper in daemon mode
-        /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
+        # Run the auto-ripper in daemon mode as user rsd
+        sudo -u rsd /usr/bin/python3 /opt/auto-ripper/auto-ripper.py --daemon >> "$LOG_FILE" 2>&1 &
         
         echo "$(date): Rip process initiated for $DEVICE_NODE" >> "$LOG_FILE"
     else

@@ -30,7 +30,12 @@ class AutoRipper:
         self.config_file = '/opt/auto-ripper/config.json'
         self.load_config()
         logging.info(f"AutoRipper initialized with device: {self.device}")
-        logging.info(f"Running as user: {os.getenv('USER', 'unknown')}, UID: {os.getuid()}")
+        import pwd
+        try:
+            user_name = pwd.getpwuid(os.getuid()).pw_name
+        except:
+            user_name = os.getenv('USER', 'unknown')
+        logging.info(f"Running as user: {user_name}, UID: {os.getuid()}")
         
     def load_config(self):
         """Load configuration from JSON file"""
@@ -150,8 +155,22 @@ class AutoRipper:
         # Check if another rip is already in progress
         lockfile = "/tmp/auto-ripper.lock"
         if os.path.exists(lockfile):
-            logging.warning("Another rip process is already running, skipping")
-            return False
+            # Check if the process is still running
+            try:
+                with open(lockfile, 'r') as f:
+                    old_pid = f.read().strip()
+                if old_pid and os.path.exists(f"/proc/{old_pid}"):
+                    logging.warning(f"Another rip process is already running (PID: {old_pid}), skipping")
+                    return False
+                else:
+                    logging.info("Removing stale lock file")
+                    os.remove(lockfile)
+            except Exception as e:
+                logging.warning(f"Error checking lock file: {e}, removing it")
+                try:
+                    os.remove(lockfile)
+                except:
+                    pass
         
         try:
             # Create lock file

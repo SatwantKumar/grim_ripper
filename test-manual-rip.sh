@@ -84,7 +84,7 @@ EJECTCD=n
 PADTRACKS=y
 OUTPUTFORMAT='Test_Album/\${TRACKNUM} - Track_\${TRACKNUM}'
 TRACKSTOENCODE="1"
-CDDBMETHOD=none
+# Skip CDDB entirely by removing cddb from ACTIONS
 MAXPROCS=1
 
 # Default metadata when no CDDB

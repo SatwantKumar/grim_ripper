@@ -22,24 +22,34 @@ if [ -z "$DEVICE_NODE" ] || [ "$DEVICE_NODE" = "/dev/" ]; then
     DEVICE_NODE="/dev/sr0"
 fi
 
-# Check if another rip is already in progress
+# ROBUST LOCKING: Use flock for atomic lock acquisition
 LOCKFILE="/tmp/auto-ripper.lock"
+LOCKFD=200
+
+# Try to acquire exclusive lock with immediate failure if already locked
+if ! flock -n $LOCKFD 2>/dev/null; then
+    echo "$(date): Another trigger already processing, ignoring duplicate trigger for $DEVICE_NODE" >> "$LOG_FILE"
+    exit 0
+fi
+
+# Redirect lock file descriptor for the duration of the script
+exec 200>"$LOCKFILE"
+
+# Double-check for existing processes (belt and suspenders)
 if [ -f "$LOCKFILE" ]; then
-    # Check if the process is actually running
-    if [ -r "$LOCKFILE" ]; then
-        PID=$(cat "$LOCKFILE" 2>/dev/null)
-        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-            echo "$(date): Rip already in progress (PID: $PID), ignoring trigger for $DEVICE_NODE" >> "$LOG_FILE"
-            exit 0
-        else
-            echo "$(date): Stale lock file found, removing..." >> "$LOG_FILE"
-            rm -f "$LOCKFILE"
-        fi
+    PID=$(cat "$LOCKFILE" 2>/dev/null)
+    if [ -n "$PID" ] && [ "$PID" != "$$" ] && kill -0 "$PID" 2>/dev/null; then
+        echo "$(date): Rip already in progress (PID: $PID), ignoring trigger for $DEVICE_NODE" >> "$LOG_FILE"
+        exit 0
     fi
 fi
 
-# Create our own lock file
+# Write our PID to the lock file
 echo $$ > "$LOCKFILE"
+echo "$(date): Lock acquired by PID $$" >> "$LOG_FILE"
+
+# Ensure lock is released on script exit
+trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
 
 # Log the trigger event
 echo "$(date): Disc insertion detected on $DEVICE_NODE (Action: $ACTION, User: $(whoami), UID: $(id -u))" >> "$LOG_FILE"
@@ -88,6 +98,28 @@ done
 if [ "$MEDIA_READY" = false ]; then
     echo "$(date): Media never became ready after $MAX_ATTEMPTS attempts, aborting" >> "$LOG_FILE"
     exit 1
+fi
+
+# Get disc ID to prevent processing the same disc multiple times
+DISC_ID=""
+if command -v cd-discid >/dev/null; then
+    DISC_ID=$(timeout 5 cd-discid "$DEVICE_NODE" 2>/dev/null | awk '{print $1}' || echo "")
+fi
+
+# Check if we've already processed this disc recently
+DISC_CACHE="/tmp/auto-ripper-last-disc"
+if [ -n "$DISC_ID" ] && [ -f "$DISC_CACHE" ]; then
+    LAST_DISC=$(cat "$DISC_CACHE" 2>/dev/null)
+    if [ "$DISC_ID" = "$LAST_DISC" ]; then
+        echo "$(date): Same disc already processed recently (ID: $DISC_ID), skipping" >> "$LOG_FILE"
+        exit 0
+    fi
+fi
+
+# Remember this disc
+if [ -n "$DISC_ID" ]; then
+    echo "$DISC_ID" > "$DISC_CACHE"
+    echo "$(date): Processing new disc (ID: $DISC_ID)" >> "$LOG_FILE"
 fi
 
 # Fix PATH for missing commands

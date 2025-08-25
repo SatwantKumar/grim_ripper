@@ -288,7 +288,8 @@ setup_permissions() {
     
     # Set ownership
     chown -R "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR"
-    chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/config.json"
+    chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    chmod 755 "$INSTALL_DIR"  # Ensure directory is writable for temp files
     
     print_success "User permissions configured"
 }

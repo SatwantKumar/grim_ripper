@@ -620,8 +620,10 @@ class AutoRipper:
         logging.info("Disc detected, analyzing...")
         
         # Wait a moment for disc to settle
+        logging.info("Waiting 3 seconds for disc to settle...")
         time.sleep(3)
         
+        logging.info("Starting disc type determination...")
         disc_type = self.get_disc_type()
         logging.info(f"Disc type determination result: {disc_type}")
         

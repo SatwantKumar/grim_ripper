@@ -171,11 +171,11 @@ class AutoRipper:
             try:
                 result = subprocess.run(['cd-discid', self.device], 
                                       capture_output=True, text=True, timeout=15)
-                if result.returncode == 0 and result.stdout.strip():
-                    logging.info("Audio CD detected via cd-discid")
+                if result.returncode == 0:
+                    logging.info(f"Audio CD detected via cd-discid: {result.stdout.strip()}")
                     return 'audio_cd'
                 else:
-                    logging.warning(f"cd-discid failed: return code {result.returncode}, output: {result.stdout[:100]}")
+                    logging.warning(f"cd-discid failed: return code {result.returncode}, stderr: {result.stderr[:100]}")
             except subprocess.TimeoutExpired:
                 logging.warning("cd-discid timed out")
             except Exception as e:
@@ -189,7 +189,7 @@ class AutoRipper:
                     logging.info("Audio CD detected via cdparanoia")
                     return 'audio_cd'
                 else:
-                    logging.warning(f"cdparanoia failed: return code {result.returncode}")
+                    logging.warning(f"cdparanoia failed: return code {result.returncode}, stderr: {result.stderr[:100]}")
             except subprocess.TimeoutExpired:
                 logging.warning("cdparanoia timed out")
             except Exception as e:

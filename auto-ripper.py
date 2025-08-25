@@ -263,6 +263,12 @@ class AutoRipper:
                 except:
                     pass
         
+        # CRITICAL: Check for potential file collisions before ripping
+        disc_id = metadata.get('disc_id', 'unknown')
+        if not self.check_for_file_collisions(disc_id):
+            logging.error("Potential file collision detected - aborting rip to prevent data loss")
+            return False
+        
         try:
             # Create lock file
             with open(lockfile, 'w') as f:
@@ -429,6 +435,50 @@ class AutoRipper:
             logging.error(f"Error getting disc metadata: {e}")
         
         return metadata
+    
+    def check_for_file_collisions(self, disc_id):
+        """Check if ripping this disc would overwrite existing files"""
+        try:
+            output_dir = self.config.get('output_dir', '/mnt/MUSIC')
+            
+            # Check for potential collision paths
+            collision_paths = [
+                os.path.join(output_dir, "Unknown_Artist", "Unknown_Album"),
+                os.path.join(output_dir, "Unknown Artist", "Unknown Album"),
+                os.path.join(output_dir, f"CD_{disc_id}", f"Disc_{disc_id}"),
+                os.path.join(output_dir, f"Unknown_Artist_{disc_id}", f"Unknown_Album_{disc_id}")
+            ]
+            
+            for path in collision_paths:
+                if os.path.exists(path):
+                    logging.warning(f"Potential collision detected: {path}")
+                    logging.warning(f"This directory already exists and may contain important files")
+                    
+                    # Check if directory has existing music files
+                    existing_files = []
+                    for root, dirs, files in os.walk(path):
+                        for file in files:
+                            if file.lower().endswith(('.flac', '.mp3', '.wav', '.ogg')):
+                                existing_files.append(os.path.join(root, file))
+                    
+                    if existing_files:
+                        logging.error(f"Found {len(existing_files)} existing music files in collision path:")
+                        for file in existing_files[:5]:  # Show first 5 files
+                            logging.error(f"  {file}")
+                        if len(existing_files) > 5:
+                            logging.error(f"  {file}")
+                        
+                        logging.error("ABORTING RIP to prevent data loss!")
+                        logging.error("Please manually rename or move the existing directory first")
+                        return False
+            
+            logging.info("No file collisions detected - safe to proceed with rip")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error checking for file collisions: {e}")
+            # If we can't check, be safe and abort
+            return False
     
     def verify_rip_quality(self, output_dir):
         """Verify the quality of the ripped files"""

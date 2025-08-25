@@ -95,11 +95,16 @@ detect_system() {
 check_existing() {
     if [ -d "$INSTALL_DIR" ]; then
         print_warning "Existing installation found at $INSTALL_DIR"
-        read -p "Do you want to continue? This will overwrite existing files. (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_status "Installation cancelled"
-            exit 0
+        # For non-interactive installation (like curl | bash), automatically continue
+        if [ -t 0 ]; then
+            read -p "Do you want to continue? This will overwrite existing files. (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_status "Installation cancelled"
+                exit 0
+            fi
+        else
+            print_status "Non-interactive mode: automatically continuing with installation"
         fi
         print_status "Backing up existing configuration..."
         cp "$INSTALL_DIR/config.json" "/tmp/auto-ripper-config-backup.json" 2>/dev/null || true

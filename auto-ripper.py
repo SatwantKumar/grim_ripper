@@ -45,22 +45,62 @@ class AutoRipper:
             'output_dir': '/mnt/MUSIC',
             'eject_after_rip': True,
             'unique_artist': 'Unknown_Artist',
-            'unique_album': 'Unknown_Album'
+            'unique_album': 'Unknown_Album',
+            'quiet_mode': True,  # Reduce log noise when no disc is present
+            'log_wait_interval': 30  # Seconds between waiting logs
         }
     
     def setup_logging(self):
-        """Setup logging configuration"""
+        """Setup logging configuration with rotation and cleanup"""
         log_dir = "/var/log/auto-ripper"
         os.makedirs(log_dir, exist_ok=True)
+        
+        # Check log file size and rotate if needed
+        log_file = f"{log_dir}/auto-ripper.log"
+        if os.path.exists(log_file):
+            file_size = os.path.getsize(log_file)
+            max_size = 10 * 1024 * 1024  # 10MB
+            
+            if file_size > max_size:
+                # Rotate log file
+                backup_file = f"{log_dir}/auto-ripper.log.old"
+                if os.path.exists(backup_file):
+                    os.remove(backup_file)
+                os.rename(log_file, backup_file)
+                logging.info("Log file rotated due to size limit")
         
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler(f"{log_dir}/auto-ripper.log"),
+                logging.FileHandler(log_file),
                 logging.StreamHandler()
             ]
         )
+        
+        # Clean up old log files
+        self.cleanup_old_logs(log_dir)
+    
+    def cleanup_old_logs(self, log_dir):
+        """Clean up old log files to prevent disk space issues"""
+        try:
+            import glob
+            import time
+            
+            # Keep only the last 5 log files
+            log_files = glob.glob(f"{log_dir}/auto-ripper.log*")
+            log_files.sort(key=os.path.getctime, reverse=True)
+            
+            # Remove old log files beyond the 5th one
+            for old_log in log_files[5:]:
+                try:
+                    os.remove(old_log)
+                    logging.info(f"Removed old log file: {old_log}")
+                except Exception as e:
+                    logging.warning(f"Could not remove old log file {old_log}: {e}")
+                    
+        except Exception as e:
+            logging.warning(f"Error cleaning up old logs: {e}")
     
     def is_disc_present(self):
         """Check if a disc is present in the drive"""
@@ -70,7 +110,14 @@ class AutoRipper:
                                   capture_output=True, text=True, timeout=5)
             return result.returncode == 0
         except Exception as e:
-            logging.error(f"Error checking for disc: {e}")
+            # Only log errors occasionally to reduce spam
+            if not hasattr(self, '_last_error_log_time'):
+                self._last_error_log_time = 0
+            
+            current_time = time.time()
+            if current_time - self._last_error_log_time >= 300:  # Log errors only every 5 minutes
+                logging.error(f"Error checking for disc: {e}")
+                self._last_error_log_time = current_time
             return False
     
     def get_disc_type(self):
@@ -386,14 +433,31 @@ class AutoRipper:
         logging.info(f"Notification: {message}")
     
     def wait_for_disc(self):
-        """Wait for a disc to be inserted"""
+        """Wait for a disc to be inserted with intelligent logging"""
         logging.info("Waiting for disc insertion...")
         
+        # Track how long we've been waiting to reduce log spam
+        wait_start_time = time.time()
+        last_log_time = wait_start_time
+        log_interval = self.config.get('log_wait_interval', 30)  # Configurable interval
+        
         while True:
+            current_time = time.time()
+            
             if self.is_disc_present():
                 time.sleep(2)  # Give it a moment to settle
                 if self.is_disc_present():  # Double-check
+                    wait_duration = current_time - wait_start_time
+                    if wait_duration > 5:  # Only log if we waited more than 5 seconds
+                        logging.info(f"Disc detected after waiting {wait_duration:.1f} seconds")
                     return True
+            else:
+                # Only log periodically to reduce spam
+                if current_time - last_log_time >= log_interval:
+                    wait_duration = current_time - wait_start_time
+                    logging.info(f"Still waiting for disc... ({wait_duration:.0f}s elapsed)")
+                    last_log_time = current_time
+            
             time.sleep(1)
     
     def process_disc(self):

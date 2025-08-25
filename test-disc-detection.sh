@@ -46,8 +46,6 @@ else
             DISC_TYPE="unknown"
         fi
     fi
-else
-    DISC_TYPE="audio_cd"
 fi
 
 echo ""

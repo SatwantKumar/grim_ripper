@@ -163,21 +163,71 @@ class AutoRipper:
             return False
     
     def get_disc_type(self):
-        """Determine if the disc is audio CD or data/DVD"""
+        """Determine if the disc is audio CD or data/DVD with enhanced detection"""
         try:
-            # Check for audio CD first
-            result = subprocess.run(['cd-discid', self.device], 
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                return 'audio_cd'
+            logging.info("Determining disc type...")
+            
+            # Check for audio CD first with cd-discid
+            try:
+                result = subprocess.run(['cd-discid', self.device], 
+                                      capture_output=True, text=True, timeout=15)
+                if result.returncode == 0 and result.stdout.strip():
+                    logging.info("Audio CD detected via cd-discid")
+                    return 'audio_cd'
+                else:
+                    logging.warning(f"cd-discid failed: return code {result.returncode}, output: {result.stdout[:100]}")
+            except subprocess.TimeoutExpired:
+                logging.warning("cd-discid timed out")
+            except Exception as e:
+                logging.warning(f"cd-discid error: {e}")
+            
+            # Try cdparanoia as alternative audio CD detection
+            try:
+                result = subprocess.run(['cdparanoia', '-Q', '-d', self.device], 
+                                      capture_output=True, text=True, timeout=15)
+                if result.returncode == 0:
+                    logging.info("Audio CD detected via cdparanoia")
+                    return 'audio_cd'
+                else:
+                    logging.warning(f"cdparanoia failed: return code {result.returncode}")
+            except subprocess.TimeoutExpired:
+                logging.warning("cdparanoia timed out")
+            except Exception as e:
+                logging.warning(f"cdparanoia error: {e}")
             
             # Check for data disc/DVD
-            result = subprocess.run(['file', '-s', self.device], 
-                                  capture_output=True, text=True, timeout=10)
-            if 'ISO 9660' in result.stdout or 'UDF' in result.stdout:
-                return 'data_disc'
+            try:
+                result = subprocess.run(['file', '-s', self.device], 
+                                      capture_output=True, text=True, timeout=10)
+                if 'ISO 9660' in result.stdout or 'UDF' in result.stdout:
+                    logging.info("Data disc detected")
+                    return 'data_disc'
+            except Exception as e:
+                logging.warning(f"file command error: {e}")
+            
+            # Try blkid as alternative data disc detection
+            try:
+                result = subprocess.run(['blkid', self.device], 
+                                      capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    logging.info("Data disc detected via blkid")
+                    return 'data_disc'
+            except Exception as e:
+                logging.warning(f"blkid error: {e}")
+            
+            # Final check - if media is present but type unknown, default to audio_cd
+            try:
+                result = subprocess.run(['dd', f'if={self.device}', 'of=/dev/null', 'bs=2048', 'count=1'], 
+                                      capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    logging.warning("Media detected but type unknown - defaulting to audio_cd")
+                    return 'audio_cd'  # Default to audio CD if media is present
+            except Exception as e:
+                logging.warning(f"dd test failed: {e}")
                 
+            logging.error("No readable disc detected")
             return 'unknown'
+            
         except Exception as e:
             logging.error(f"Error determining disc type: {e}")
             return 'unknown'
@@ -569,30 +619,49 @@ class AutoRipper:
         """Main disc processing function"""
         logging.info("Disc detected, analyzing...")
         
+        # Wait a moment for disc to settle
+        time.sleep(3)
+        
         disc_type = self.get_disc_type()
-        logging.info(f"Disc type: {disc_type}")
+        logging.info(f"Disc type determination result: {disc_type}")
         
         success = False
         
         if disc_type == 'audio_cd':
+            logging.info("Processing as audio CD...")
             success = self.rip_audio_cd()
             if success:
                 self.send_notification("Audio CD ripped successfully")
+                logging.info("Audio CD rip completed successfully")
             else:
                 self.send_notification("Audio CD rip failed")
+                logging.error("Audio CD rip failed")
                 
         elif disc_type == 'data_disc':
+            logging.info("Processing as data disc/DVD...")
             success = self.rip_dvd()
             if success:
                 self.send_notification("DVD ripped successfully")
+                logging.info("DVD rip completed successfully")
             else:
                 self.send_notification("DVD rip failed")
+                logging.error("DVD rip failed")
         else:
-            logging.warning("Unknown disc type, skipping")
-            self.send_notification("Unknown disc type detected")
+            logging.warning(f"Unknown disc type detected: {disc_type}")
+            logging.warning("This could be due to:")
+            logging.warning("1. Disc is damaged or dirty")
+            logging.warning("2. Not an audio CD or data disc")
+            logging.warning("3. Permission issues reading the disc")
+            logging.warning("4. Drive hardware issues")
+            logging.warning("Skipping rip process...")
+            self.send_notification("Unknown disc type - check logs for details")
         
-        # Always try to eject
-        self.eject_disc()
+        # Only eject if configured to do so
+        if self.config.get('eject_after_rip', True):
+            logging.info("Ejecting disc (eject_after_rip = true)")
+            self.eject_disc()
+        else:
+            logging.info("Not ejecting disc (eject_after_rip = false)")
         
         return success
     

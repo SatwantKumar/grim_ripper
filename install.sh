@@ -286,10 +286,32 @@ setup_permissions() {
     usermod -a -G cdrom "$SERVICE_USER"
     usermod -a -G audio "$SERVICE_USER"
     
-    # Set ownership
+    # Set ownership for all directories and files
     chown -R "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR"
     chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    
+    # Ensure proper permissions for auto-ripper to work
     chmod 755 "$INSTALL_DIR"  # Ensure directory is writable for temp files
+    chmod 644 "$INSTALL_DIR"/*.py  # Python files readable
+    chmod 644 "$INSTALL_DIR"/*.json  # Config files readable
+    chmod 644 "$INSTALL_DIR"/*.conf  # Config files readable
+    chmod +x "$INSTALL_DIR"/*.py  # Python files executable
+    chmod +x "$INSTALL_DIR"/*.sh  # Shell scripts executable
+    
+    # Ensure log directory is writable
+    chmod 755 "$LOG_DIR"
+    touch "$LOG_DIR/auto-ripper.log"
+    touch "$LOG_DIR/trigger.log"
+    chown "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR"/*.log
+    chmod 644 "$LOG_DIR"/*.log
+    
+    # Test write permissions
+    if sudo -u "$SERVICE_USER" test -w "$INSTALL_DIR"; then
+        print_success "Installation directory is writable by $SERVICE_USER"
+    else
+        print_error "Installation directory is NOT writable by $SERVICE_USER"
+        return 1
+    fi
     
     print_success "User permissions configured"
 }
@@ -349,6 +371,14 @@ test_installation() {
     # Test if optical drive is detected
     if [ -e "/dev/sr0" ]; then
         print_success "Optical drive detected at /dev/sr0"
+        
+        # Test drive permissions
+        if [ -r "/dev/sr0" ]; then
+            print_success "Optical drive is readable"
+        else
+            print_warning "Optical drive is not readable - checking permissions"
+            ls -la /dev/sr0
+        fi
     else
         print_warning "No optical drive detected"
         print_warning "Make sure your USB optical drive is connected"
@@ -374,6 +404,42 @@ test_installation() {
     else
         print_error "Missing dependencies: ${missing_deps[*]}"
     fi
+    
+    # Test write permissions
+    print_status "Testing write permissions..."
+    if sudo -u "$SERVICE_USER" test -w "$INSTALL_DIR"; then
+        print_success "Installation directory is writable by $SERVICE_USER"
+    else
+        print_error "Installation directory is NOT writable by $SERVICE_USER"
+    fi
+    
+    # Test log directory
+    if sudo -u "$SERVICE_USER" test -w "$LOG_DIR"; then
+        print_success "Log directory is writable by $SERVICE_USER"
+    else
+        print_error "Log directory is NOT writable by $SERVICE_USER"
+    fi
+    
+    # Test service creation
+    if systemctl list-unit-files | grep -q auto-ripper; then
+        print_success "Auto-ripper service is installed"
+        
+        # Test service startup
+        if systemctl is-enabled auto-ripper >/dev/null 2>&1; then
+            print_success "Auto-ripper service is enabled"
+        else
+            print_warning "Auto-ripper service is not enabled"
+        fi
+    else
+        print_error "Auto-ripper service is not installed"
+    fi
+    
+    # Test udev rules
+    if [ -f "/etc/udev/rules.d/99-auto-ripper.rules" ]; then
+        print_success "udev rules are installed"
+    else
+        print_warning "udev rules are not installed"
+    fi
 }
 
 # Restore backup configuration if it exists
@@ -391,21 +457,22 @@ print_final_instructions() {
     echo
     print_success "Installation completed successfully!"
     echo
-    echo -e "${CYAN}==================== NEXT STEPS ====================${NC}"
+    echo -e "${CYAN}==================== READY TO RIP! ====================${NC}"
     echo
-    echo "1. ${YELLOW}REBOOT${NC} your Raspberry Pi to activate group permissions:"
-    echo "   sudo reboot"
+    echo "🎵 ${GREEN}Grim Ripper is now running and ready!${NC}"
     echo
-    echo "2. After reboot, ${YELLOW}INSERT A CD${NC} to test automatic ripping"
+    echo "• ${YELLOW}INSERT ANY AUDIO CD${NC} - ripping starts automatically"
+    echo "• Files are saved to $OUTPUT_DIR/[Artist]/[Album]/"
+    echo "• Both FLAC (lossless) and MP3 formats are created"
+    echo "• CD ejects automatically when complete"
     echo
-    echo "3. Monitor progress:"
+    echo -e "${CYAN}==================== MONITORING ====================${NC}"
+    echo
+    echo "Monitor ripping progress:"
     echo "   tail -f $LOG_DIR/auto-ripper.log"
     echo
-    echo "4. Check system status:"
-    echo "   sudo $INSTALL_DIR/utils/check-status.sh"
-    echo
-    echo "5. Troubleshoot if needed:"
-    echo "   sudo $INSTALL_DIR/utils/troubleshoot.sh"
+    echo "Check service status:"
+    echo "   systemctl status auto-ripper"
     echo
     echo -e "${CYAN}==================== CONFIGURATION ==================${NC}"
     echo
@@ -416,14 +483,14 @@ print_final_instructions() {
     echo "To change settings:"
     echo "   sudo nano $INSTALL_DIR/config.json"
     echo
-    echo -e "${CYAN}==================== USAGE ====================${NC}"
+    echo -e "${CYAN}==================== TROUBLESHOOTING ==================${NC}"
     echo
-    echo "• Insert any audio CD - ripping starts automatically"
-    echo "• Files are saved to $OUTPUT_DIR/[Artist]/[Album]/"
-    echo "• Both FLAC (lossless) and MP3 formats are created"
-    echo "• CD ejects automatically when complete"
+    echo "If you encounter issues:"
+    echo "1. Check logs: tail -f $LOG_DIR/auto-ripper.log"
+    echo "2. Restart service: sudo systemctl restart auto-ripper"
+    echo "3. Check permissions: sudo $INSTALL_DIR/check-auto-ripper-status.sh"
     echo
-    echo -e "${GREEN}Happy ripping with Grim Ripper! 🎵💀${NC}"
+    echo -e "${GREEN}🎵💀 Happy ripping with Grim Ripper! 💀🎵${NC}"
     echo
 }
 
@@ -444,6 +511,30 @@ main() {
     setup_logging
     restore_config
     test_installation
+    
+    # Start and verify service
+    print_status "Starting auto-ripper service..."
+    systemctl start auto-ripper.service
+    
+    # Wait a moment for service to start
+    sleep 3
+    
+    # Verify service is running
+    if systemctl is-active auto-ripper >/dev/null 2>&1; then
+        print_success "Auto-ripper service is running"
+    else
+        print_error "Auto-ripper service failed to start"
+        print_error "Check logs: journalctl -u auto-ripper -n 20"
+        return 1
+    fi
+    
+    # Test that the service can write to log files
+    if [ -f "$LOG_DIR/auto-ripper.log" ] && [ -w "$LOG_DIR/auto-ripper.log" ]; then
+        print_success "Log files are writable"
+    else
+        print_warning "Log files may not be writable"
+    fi
+    
     print_final_instructions
 }
 

@@ -31,20 +31,38 @@ chmod 755 /var/log/auto-ripper
 # Check if /mnt/MUSIC exists and is writable by the user
 if [ -d "/mnt/MUSIC" ]; then
     echo "✅ /mnt/MUSIC exists (used by Plex)"
+    
+    # Get current ownership info
+    MUSIC_OWNER=$(stat -c '%U' /mnt/MUSIC 2>/dev/null || echo "unknown")
+    MUSIC_GROUP=$(stat -c '%G' /mnt/MUSIC 2>/dev/null || echo "unknown")
+    echo "Current ownership: $MUSIC_OWNER:$MUSIC_GROUP"
+    
     # Check if user can write to it
-    if sudo -u "$ACTUAL_USER" test -w "/mnt/MUSIC"; then
-        echo "✅ $ACTUAL_USER can write to /mnt/MUSIC"
+    if sudo -u "$ACTUAL_USER" test -w "/mnt/MUSIC" 2>/dev/null; then
+        echo "✅ $ACTUAL_USER can already write to /mnt/MUSIC"
     else
-        echo "⚠️  Adding $ACTUAL_USER write permissions to /mnt/MUSIC"
-        # Add user to the same group that owns /mnt/MUSIC or give write permissions
-        MUSIC_GROUP=$(stat -c '%G' /mnt/MUSIC)
-        echo "Adding $ACTUAL_USER to group: $MUSIC_GROUP"
-        usermod -a -G "$MUSIC_GROUP" "$ACTUAL_USER"
+        echo "⚠️  $ACTUAL_USER cannot write to /mnt/MUSIC, fixing permissions..."
+        
+        # Method 1: Add user to the group that owns the directory
+        if [ "$MUSIC_GROUP" != "unknown" ] && [ "$MUSIC_GROUP" != "$ACTUAL_USER" ]; then
+            echo "Adding $ACTUAL_USER to group: $MUSIC_GROUP"
+            usermod -a -G "$MUSIC_GROUP" "$ACTUAL_USER" 2>/dev/null || echo "Could not add to group"
+        fi
+        
+        # Method 2: Add group write permissions
+        echo "Adding group write permissions to /mnt/MUSIC"
+        chmod g+w /mnt/MUSIC 2>/dev/null || echo "Could not modify permissions"
+        
+        # Method 3: If all else fails, make it world-writable (last resort)
+        if ! sudo -u "$ACTUAL_USER" test -w "/mnt/MUSIC" 2>/dev/null; then
+            echo "⚠️  Last resort: making /mnt/MUSIC world-writable"
+            chmod 777 /mnt/MUSIC 2>/dev/null || echo "Could not make world-writable"
+        fi
     fi
 else
     echo "❌ /mnt/MUSIC not found - creating it"
     mkdir -p /mnt/MUSIC
-    chown -R "$ACTUAL_USER:$ACTUAL_USER" /mnt/MUSIC
+    chown -R "$ACTUAL_USER:$ACTUAL_USER" /mnt/MUSIC 2>/dev/null || chmod 777 /mnt/MUSIC
     chmod 755 /mnt/MUSIC
 fi
 

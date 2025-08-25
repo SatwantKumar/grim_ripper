@@ -170,12 +170,40 @@ create_directories() {
     mkdir -p "$OUTPUT_DIR"
     mkdir -p "$INSTALL_DIR/utils"
     
-    # Set proper permissions
-    chown -R "$SERVICE_USER:$SERVICE_USER" "$OUTPUT_DIR"
-    chown -R "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR"
+    # Set proper permissions - be more careful with existing directories
+    # Only set permissions if we can, don't fail if we can't
+    chown -R "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR" 2>/dev/null || {
+        print_warning "Could not set ownership of $LOG_DIR, will try alternative approach"
+        # Make sure the user can at least write to it
+        chmod 777 "$LOG_DIR" 2>/dev/null || true
+    }
+    
     chmod 755 "$INSTALL_DIR"
-    chmod 755 "$OUTPUT_DIR"
     chmod 755 "$LOG_DIR"
+    
+    # For OUTPUT_DIR, be extra careful since it might be used by other services (like Plex)
+    if [ -d "$OUTPUT_DIR" ]; then
+        # Directory exists, check if we can write to it
+        if sudo -u "$SERVICE_USER" test -w "$OUTPUT_DIR" 2>/dev/null; then
+            print_success "$SERVICE_USER can already write to $OUTPUT_DIR"
+        else
+            print_warning "Adding write permissions for $SERVICE_USER to existing $OUTPUT_DIR"
+            # Add group write permission instead of changing ownership
+            chmod g+w "$OUTPUT_DIR" 2>/dev/null || true
+            # Try to add user to the group that owns the directory
+            OUTPUT_GROUP=$(stat -c '%G' "$OUTPUT_DIR" 2>/dev/null || echo "$SERVICE_USER")
+            if [ "$OUTPUT_GROUP" != "$SERVICE_USER" ]; then
+                usermod -a -G "$OUTPUT_GROUP" "$SERVICE_USER" 2>/dev/null || true
+                print_status "Added $SERVICE_USER to group $OUTPUT_GROUP for $OUTPUT_DIR access"
+            fi
+        fi
+    else
+        # Directory doesn't exist, create it with proper ownership
+        mkdir -p "$OUTPUT_DIR"
+        chown -R "$SERVICE_USER:$SERVICE_USER" "$OUTPUT_DIR"
+        chmod 755 "$OUTPUT_DIR"
+        print_success "Created $OUTPUT_DIR with proper permissions"
+    fi
     
     print_success "Directories created"
 }

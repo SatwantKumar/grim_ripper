@@ -221,15 +221,17 @@ class AutoRipper:
             # Test internet connectivity for metadata
             internet_available = self.test_internet_connection()
             
-            if internet_available:
-                logging.info("Internet available, using online metadata")
-                cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde.conf']
-            else:
-                logging.info("No internet connection, using offline mode")
-                cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
+            # Always try online mode first, with timeout
+            logging.info("Attempting online metadata retrieval...")
+            cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde.conf']
+            
+            # Set environment variables for better metadata
+            env = os.environ.copy()
+            env['CDDB_TIMEOUT'] = '15'
+            env['MUSICBRAINZ_TIMEOUT'] = '20'
             
             logging.info(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600, env=env)
             
             # Log the output for debugging
             if result.stdout:
@@ -275,20 +277,29 @@ class AutoRipper:
                 
                 return True
             else:
-                # Check if error is network-related and retry offline
-                if "name resolution" in result.stderr.lower() or "network" in result.stderr.lower():
-                    logging.warning("Network error detected, retrying in offline mode")
-                    cmd = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
-                    logging.info(f"Retry command: {' '.join(cmd)}")
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+                # Check if error is network-related or metadata-related and retry offline
+                error_indicators = ["name resolution", "network", "timeout", "connection", "cddb", "musicbrainz"]
+                if any(indicator in result.stderr.lower() for indicator in error_indicators) or not internet_available:
+                    logging.warning("Network/metadata error detected, retrying in offline mode")
+                    cmd_offline = ['abcde', '-d', self.device, '-c', '/opt/auto-ripper/abcde-offline.conf']
+                    logging.info(f"Retry command: {' '.join(cmd_offline)}")
+                    
+                    # Set environment for offline mode
+                    env_offline = os.environ.copy()
+                    env_offline['INTERACTIVE'] = 'n'
+                    
+                    result = subprocess.run(cmd_offline, capture_output=True, text=True, timeout=3600, env=env_offline)
                     
                     if result.stdout:
-                        logging.info(f"abcde retry stdout: {result.stdout[:500]}...")
+                        logging.info(f"abcde offline stdout: {result.stdout[:500]}...")
                     if result.stderr:
-                        logging.warning(f"abcde retry stderr: {result.stderr[:500]}...")
+                        logging.warning(f"abcde offline stderr: {result.stderr[:500]}...")
                     
                     if result.returncode == 0:
                         logging.info("Audio CD ripped successfully (offline mode)")
+                        
+                        # Post-process to fix metadata in offline mode
+                        self.fix_offline_metadata()
                         return True
                 
                 logging.error(f"Error ripping audio CD (return code: {result.returncode})")
@@ -397,6 +408,63 @@ class AutoRipper:
         except Exception as e:
             logging.error(f"Error verifying rip quality: {e}")
             return False
+    
+    def fix_offline_metadata(self):
+        """Fix metadata for files ripped in offline mode"""
+        try:
+            import glob
+            import os
+            
+            # Look for recently created files with generic names
+            recent_files = []
+            output_dir = self.config['output_dir']
+            
+            # Find files created in the last 10 minutes
+            import time
+            cutoff_time = time.time() - 600  # 10 minutes ago
+            
+            for root, dirs, files in os.walk(output_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if os.path.getctime(file_path) > cutoff_time:
+                        recent_files.append(file_path)
+            
+            # Check if any recent files have Unknown or generic names
+            problematic_dirs = set()
+            for file_path in recent_files:
+                if any(term in file_path for term in ['Unknown_Artist', 'Unknown_Album', 'CD_Ripped_', 'Album_']):
+                    problematic_dirs.add(os.path.dirname(file_path))
+            
+            if problematic_dirs:
+                logging.info("Post-processing offline rip to improve metadata...")
+                
+                # Get disc ID for better naming
+                try:
+                    result = subprocess.run(['cd-discid', self.device], 
+                                          capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        disc_info = result.stdout.strip().split()
+                        if len(disc_info) > 0:
+                            disc_id = disc_info[0]
+                            
+                            # Rename directories with disc ID
+                            for prob_dir in problematic_dirs:
+                                parent_dir = os.path.dirname(prob_dir)
+                                new_name = f"CD_{disc_id}"
+                                new_dir = os.path.join(parent_dir, new_name)
+                                
+                                if prob_dir != new_dir:
+                                    try:
+                                        os.rename(prob_dir, new_dir)
+                                        logging.info(f"Renamed {prob_dir} to {new_dir}")
+                                    except OSError as e:
+                                        logging.warning(f"Could not rename {prob_dir}: {e}")
+                                        
+                except Exception as e:
+                    logging.warning(f"Could not improve offline metadata: {e}")
+                    
+        except Exception as e:
+            logging.error(f"Error in fix_offline_metadata: {e}")
     
     def rip_dvd(self):
         """Rip DVD using HandBrakeCLI"""

@@ -183,8 +183,15 @@ class AutoRipper:
             return 'unknown'
     
     def rip_audio_cd(self):
-        """Rip audio CD using abcde"""
+        """Rip audio CD using abcde with enhanced metadata handling"""
         logging.info("Starting audio CD rip...")
+        
+        # Pre-fetch metadata for logging and verification
+        metadata = self.get_disc_metadata()
+        if metadata['disc_id']:
+            logging.info(f"Pre-rip metadata check: Disc ID {metadata['disc_id']}")
+            if metadata['artist'] and metadata['album']:
+                logging.info(f"Expected output: {metadata['artist']} - {metadata['album']}")
         
         # Check if another rip is already in progress
         lockfile = "/tmp/auto-ripper.lock"
@@ -232,17 +239,40 @@ class AutoRipper:
             
             if result.returncode == 0:
                 logging.info("Audio CD ripped successfully")
-                # Check if files were actually created
+                
+                # Verify rip quality and metadata
+                rip_quality_ok = self.verify_rip_quality(self.config['output_dir'])
+                
+                # Check if files were actually created and look for "Unknown" in paths
                 output_files = []
+                unknown_files = []
                 try:
                     import glob
                     output_files = glob.glob(f"{self.config['output_dir']}/**/*.flac", recursive=True)
                     output_files.extend(glob.glob(f"{self.config['output_dir']}/**/*.mp3", recursive=True))
+                    
+                    # Check for "Unknown" or generic names in file paths
+                    for f in output_files:
+                        if any(term in f.lower() for term in ['unknown', 'cd_', 'ripped_']):
+                            unknown_files.append(f)
+                    
                     logging.info(f"Found {len(output_files)} output files")
+                    
+                    if unknown_files:
+                        logging.warning(f"Found {len(unknown_files)} files with generic/unknown metadata:")
+                        for f in unknown_files[:3]:  # Log first 3 examples
+                            logging.warning(f"  Generic name: {f}")
+                        logging.warning("This suggests metadata lookup failed. Check internet connection and CDDB servers.")
+                    
                     for f in output_files[-3:]:  # Log last 3 files
                         logging.info(f"Created: {f}")
+                        
                 except Exception as e:
                     logging.warning(f"Could not check output files: {e}")
+                
+                if not rip_quality_ok:
+                    logging.warning("Rip quality verification failed")
+                
                 return True
             else:
                 # Check if error is network-related and retry offline
@@ -283,6 +313,89 @@ class AutoRipper:
             socket.create_connection(("8.8.8.8", 53), timeout=5)
             return True
         except OSError:
+            return False
+    
+    def get_disc_metadata(self):
+        """Get disc metadata using multiple methods"""
+        metadata = {
+            'disc_id': None,
+            'artist': None,
+            'album': None,
+            'tracks': []
+        }
+        
+        try:
+            # Get disc ID
+            result = subprocess.run(['cd-discid', self.device], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                disc_info = result.stdout.strip().split()
+                if len(disc_info) > 0:
+                    metadata['disc_id'] = disc_info[0]
+                    logging.info(f"Disc ID: {metadata['disc_id']}")
+            
+            # Try MusicBrainz lookup if we have internet
+            if metadata['disc_id'] and self.test_internet_connection():
+                try:
+                    import urllib.request
+                    import json
+                    
+                    url = f"https://musicbrainz.org/ws/2/discid/{metadata['disc_id']}?inc=recordings+artist-credits&fmt=json"
+                    logging.info(f"Querying MusicBrainz: {url}")
+                    
+                    with urllib.request.urlopen(url, timeout=15) as response:
+                        data = json.loads(response.read().decode())
+                        
+                        if 'releases' in data and len(data['releases']) > 0:
+                            release = data['releases'][0]
+                            
+                            # Extract artist
+                            if 'artist-credit' in release:
+                                artist_names = [ac['name'] for ac in release['artist-credit'] if 'name' in ac]
+                                if artist_names:
+                                    metadata['artist'] = ', '.join(artist_names)
+                            
+                            # Extract album
+                            if 'title' in release:
+                                metadata['album'] = release['title']
+                            
+                            logging.info(f"MusicBrainz metadata: {metadata['artist']} - {metadata['album']}")
+                            
+                except Exception as e:
+                    logging.warning(f"MusicBrainz lookup failed: {e}")
+            
+        except Exception as e:
+            logging.error(f"Error getting disc metadata: {e}")
+        
+        return metadata
+    
+    def verify_rip_quality(self, output_dir):
+        """Verify the quality of the ripped files"""
+        if not os.path.exists(output_dir):
+            return False
+            
+        try:
+            import glob
+            flac_files = glob.glob(f"{output_dir}/**/*.flac", recursive=True)
+            mp3_files = glob.glob(f"{output_dir}/**/*.mp3", recursive=True)
+            
+            total_files = len(flac_files) + len(mp3_files)
+            logging.info(f"Rip verification: Found {total_files} files ({len(flac_files)} FLAC, {len(mp3_files)} MP3)")
+            
+            # Check if files are not empty
+            empty_files = []
+            for file_path in flac_files + mp3_files:
+                if os.path.getsize(file_path) < 1024:  # Less than 1KB is suspicious
+                    empty_files.append(file_path)
+            
+            if empty_files:
+                logging.warning(f"Found {len(empty_files)} suspiciously small files")
+                return False
+            
+            return total_files > 0
+            
+        except Exception as e:
+            logging.error(f"Error verifying rip quality: {e}")
             return False
     
     def rip_dvd(self):
